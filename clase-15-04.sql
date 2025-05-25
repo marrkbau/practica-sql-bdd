@@ -1,9 +1,11 @@
-
-select top 1 fact_cliente
--- , count(*) as cantidad, sum(fact_total), min(fact_total), max(fact_total), avg(fact_total)
+/*
+El order by va a funcionar solo si es parte de tu dominio cuando hay un group by. Osea no podría
+pedir que agrupe por fact_numero porque no se encuentra dentro de mi universo (que ahora por el group by es el select)
+*/
+select count(*) as cantidad, sum(fact_total), min(fact_total), max(fact_total), avg(fact_total)
 from factura
 group by fact_cliente
--- having count(*) > 10
+having count(*) > 10
 order by sum(fact_total) desc
 
 
