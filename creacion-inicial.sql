@@ -326,21 +326,6 @@ SELECT DISTINCT ROW_NUMBER() over (ORDER by provincia_nombre) as provincia_id,
     ) as provincias(provincia_nombre)
 
 -- Localidad
-insert into localidad (localidad_num, localidad_provincia, localidad_nombre)
-select 
-row_number() over (order by localidad_nombre) as localidad_num,
-localidad_provincia,
-localidad_nombre
-from (
-    select distinct cliente_localidad, cliente_provincia from gd_esquema.Maestra
-    union
-    select distinct sucursal_localidad, sucursal_provincia from gd_esquema.Maestra
-    union
-    select distinct proveedor_localidad, proveedor_provincia from gd_esquema.Maestra
-) as localidades(localidad_nombre, localidad_provincia)
-join provincia on localidad_provincia = provincia_id
-
-
 INSERT INTO Localidad (
     localidad_num,
     localidad_provincia,
@@ -398,6 +383,26 @@ SELECT DISTINCT material_numero,
     AND Material.material_tipo = gd_esquema.Maestra.Material_Tipo
     where Material.material_tipo = 'Madera';
 
+-- Tela
+INSERT INTO Tela (tela_numero, tela_color, tela_textura) 
+SELECT DISTINCT material_numero,
+    tela_Color,
+    tela_textura
+    FROM gd_esquema.Maestra
+    JOIN Material 
+    ON Material.material_nombre = gd_esquema.Maestra.Material_Nombre
+    AND Material.material_tipo = gd_esquema.Maestra.Material_Tipo
+    where Material.material_tipo = 'Tela';
+
+-- Relleno
+INSERT INTO Relleno (relleno_num, relleno_densidad) 
+SELECT DISTINCT material_numero,
+    relleno_densidad
+    FROM gd_esquema.Maestra
+    JOIN Material 
+    ON Material.material_nombre = gd_esquema.Maestra.Material_Nombre
+    AND Material.material_tipo = gd_esquema.Maestra.Material_Tipo
+    where Material.material_tipo = 'Relleno';
 
 -- Sillon modelo
 INSERT INTO Sillon_Modelo (
