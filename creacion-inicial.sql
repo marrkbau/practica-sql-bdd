@@ -258,7 +258,7 @@ ALTER TABLE Detalle_Factura
 ADD FOREIGN KEY (detalle_f_factura_num) REFERENCES Factura(fact_numero);
 
 ALTER TABLE Envio
-ADD FOREIGN KEY (envio_fact_num) REFERENCES Factura(fact_numero);
+ADD FOREIGN KEY (envio_fact_numero) REFERENCES Factura(fact_numero);
 
 ALTER TABLE Sillon
 ADD FOREIGN KEY (sillon_sillon_m_num) REFERENCES Sillon_Modelo(sillon_mod_codigo),
@@ -284,7 +284,7 @@ ADD FOREIGN KEY (detalle_comp_compra_num) REFERENCES Compra(compra_numero),
     FOREIGN KEY (detalle_comp_material) REFERENCES Material(material_numero);
 
 ALTER TABLE Detalle_Factura
-ADD FOREIGN KEY (detalle_f_pedido_numero, detalle_f_det_pedido_numero)
+ADD FOREIGN KEY (detalle_f_pedido_numero, detalle_f_det_pedido)
         REFERENCES Detalle_Pedido(detalle_p_pedido_numero, detalle_p_numero)
 
 
@@ -735,7 +735,7 @@ GO
 CREATE PROCEDURE Migracion_Detalle_Compra
 AS
 BEGIN
-    INSERT INTO Detalle_Compra (detalle_comp_compra_num, detalle_comp_material, detalle_comp_material, 
+    INSERT INTO Detalle_Compra (detalle_comp_compra_num, detalle_comp_material, 
         detalle_comp_precioUnitario, detalle_comp_cantidad)
     SELECT DISTINCT
     Maestra.Compra_Numero,
@@ -813,28 +813,27 @@ GO
 */
 /*EXECUTES*/
 
-execute Migracion_Provincia; -- ? creo que anda
+execute Migracion_Estado; -- ?
 execute Migracion_Sillon_Medida;
 execute Migracion_Sillon_Modelo;
 execute Migracion_Material;-- anda
 execute Migracion_Tela; -- anda
-execute Migracion_Cliente;
 execute Migracion_Madera; -- anda
-execute Migracion_Tela;-- anda
 execute Migracion_Relleno; -- anda
+execute Migracion_Provincia; -- ? creo que anda
 execute Migracion_Localidad; -- ?
-execute Migracion_Contacto; -- ?
 execute Migracion_Direccion; -- ?
+execute Migracion_Contacto; -- ?
+execute Migracion_Cliente;
 execute Migracion_Sucursal;
-execute Migracion_Estado; -- ?
-execute Migracion_Sillon; -- ?
-execute Migracion_Detalle_Compra; -- +
-execute Migracion_Material_Sillon; -- ?
-execute Migracion_Envio; -- *
 execute Migracion_Factura; -- *
-execute Migracion_Compra; -- ?
+execute Migracion_Envio; -- *
+execute Migracion_Sillon; -- ?
+execute Migracion_Material_Sillon; -- ?
 execute Migracion_Proveedor; -- ?
+execute Migracion_Compra; -- ?
 execute Migracion_Pedido; -- ?
 execute Migracion_Pedido_Cancelacion; -- *
+execute Migracion_Detalle_Compra; -- +
 execute Migracion_Detalle_Pedido;
 execute Migracion_Detalle_Factura; -- *
