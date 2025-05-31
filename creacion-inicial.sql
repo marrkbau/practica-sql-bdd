@@ -50,12 +50,13 @@ PRINT '--- TABLAS DROPEADAS CORRECTAMENTE ---';
 
 CREATE TABLE Cliente(
     cliente_numero BIGINT IDENTITY NOT NULL PRIMARY KEY,
-    cliente_direccion_num BIGINT NOT NULL,
     cliente_contacto_num BIGINT NOT NULL,
     cliente_dni BIGINT,
     cliente_nombre NVARCHAR(255),
     cliente_apellido NVARCHAR(255),
-    cliente_fechaNacimiento DATETIME2(6)
+    cliente_fechaNacimiento DATETIME2(6),
+    cliente_direccion NVARCHAR(255),
+    cliente_localidad_id BIGINT NOT NULL
 )
 
 create table Pedido(
@@ -81,14 +82,9 @@ CREATE TABLE Envio(
 
 CREATE TABLE Sucursal(
     sucursal_numero BIGINT NOT NULL PRIMARY KEY,
-    sucursal_direccion_num BIGINT NOT NULL,
-    sucursal_contacto_num BIGINT NOT NULL
-)
-
-CREATE TABLE Direccion(
-    dire_numero BIGINT IDENTITY NOT NULL PRIMARY KEY,
-    direccion_localidad_num BIGINT,
-    dire_direccion NVARCHAR(255),
+    sucursal_contacto_num BIGINT NOT NULL,
+    sucursal_direccion NVARCHAR(255) NOT NULL,
+    sucursal_localidad_id BIGINT NOT NULL
 )
 
 CREATE TABLE Localidad(
@@ -99,10 +95,11 @@ CREATE TABLE Localidad(
 
 CREATE TABLE Proveedor(
     proved_num BIGINT IDENTITY NOT NULL PRIMARY KEY,
-    proved_dire_num BIGINT,
-    proved_contacto_num BIGINT,
-    proved_cuit NVARCHAR(255),
-    proved_razonSocial NVARCHAR(255)
+    proved_contacto_num BIGINT NOT NULL,
+    proved_cuit NVARCHAR(255) NOT NULL,
+    proved_razonSocial NVARCHAR(255) NOT NULL,
+    proved_direccion NVARCHAR(255) NOT NULL,
+    proved_localidad_id BIGINT NOT NULL
 )
 
 CREATE TABLE Provincia(
@@ -225,22 +222,19 @@ CREATE TABLE Sillon_Modelo (
 
 ------------------------------------------------------------------------------------------------
 ALTER TABLE Cliente
-ADD FOREIGN KEY (cliente_direccion_num) REFERENCES Direccion(dire_numero),
-    FOREIGN KEY (cliente_contacto_num) REFERENCES Contacto(contacto_num);
-
-ALTER TABLE Direccion
-ADD FOREIGN KEY (direccion_localidad_num) REFERENCES Localidad(localidad_num);
+ADD FOREIGN KEY (cliente_contacto_num) REFERENCES Contacto(contacto_num),
+    FOREIGN KEY (cliente_localidad_id) REFERENCES Localidad(localidad_num);
 
 ALTER TABLE Localidad
 ADD FOREIGN KEY (localidad_provincia) REFERENCES Provincia(provincia_id);
 
 ALTER TABLE Sucursal
-ADD FOREIGN KEY (sucursal_direccion_num) REFERENCES Direccion(dire_numero),
-    FOREIGN KEY (sucursal_contacto_num) REFERENCES Contacto(contacto_num);
+ADD FOREIGN KEY (sucursal_contacto_num) REFERENCES Contacto(contacto_num),
+    FOREIGN KEY (sucursal_localidad_id) REFERENCES Localidad(localidad_num);
 
 ALTER TABLE Proveedor
-ADD FOREIGN KEY (proved_dire_num) REFERENCES Direccion(dire_numero),
-    FOREIGN KEY (proved_contacto_num) REFERENCES Contacto(contacto_num);
+ADD FOREIGN KEY (proved_contacto_num) REFERENCES Contacto(contacto_num),
+    FOREIGN KEY (proved_localidad_id) REFERENCES Localidad(localidad_num);
 
 ALTER TABLE Pedido
 ADD FOREIGN KEY (pedido_cliente_num) REFERENCES Cliente(cliente_numero),
@@ -289,17 +283,18 @@ ADD FOREIGN KEY (detalle_f_pedido_numero, detalle_f_det_pedido)
 
 
 PRINT '--- TABLAS CREADAS DE FORMA EXITOSA ---';
-/*Procedures*/
 GO
+/*Procedures*/
 
 -- ESTADO
 CREATE PROCEDURE Migracion_Estado
 AS 
 BEGIN
     INSERT INTO Estado (estado_descripcion)
-    SELECT DISTINCT 
-        Maestra.Pedido_Estado
-    FROM gd_esquema.Maestra
+VALUES 
+    ('PENDIENTE'),
+    ('CANCELADO'),
+    ('ENTREGADO');
 END 
 GO
 
@@ -314,6 +309,10 @@ BEGIN
         Sillon_Medida_Profundidad,
         Sillon_Medida_Precio
     FROM gd_esquema.Maestra
+	WHERE Sillon_Medida_Alto IS NOT NULL 
+	AND Sillon_Medida_Ancho IS NOT NULL 
+	AND Sillon_Medida_Profundidad IS NOT NULL 
+	AND Sillon_Medida_Precio IS NOT NULL 
 END
 GO
 
@@ -328,6 +327,10 @@ INSERT INTO Sillon_Modelo (sillon_mod_codigo,sillon_modelo,sillon_mod_descripcio
         Sillon_Modelo_Descripcion,
         Sillon_Modelo_Precio
     FROM gd_esquema.Maestra
+	WHERE Sillon_Modelo_Codigo IS NOT NULL
+	AND Sillon_Modelo IS NOT NULL
+	AND Sillon_Modelo_Descripcion IS NOT NULL
+	AND Sillon_Modelo_Precio IS NOT NULL
 END
 GO
 
@@ -342,6 +345,10 @@ INSERT INTO Material (material_tipo, material_nombre, material_descripcion, mate
         material_descripcion,
         material_precio
     FROM gd_esquema.Maestra
+	WHERE material_tipo IS NOT NULL
+	AND material_nombre IS NOT NULL
+	AND material_descripcion IS NOT NULL
+	AND material_precio IS NOT NULL
 END
 GO
 
@@ -360,7 +367,7 @@ INSERT INTO Tela (tela_numero, tela_color, tela_textura)
         AND Maestra.Material_Nombre = Material.material_nombre
 		AND Maestra.Material_Descripcion = Material.material_descripcion
 		AND Maestra.Material_Precio = Material.material_precio
-	WHERE Maestra.Material_Tipo = 'Tela'    
+	WHERE Maestra.Material_Tipo = 'Tela' 
 END
 GO
 
@@ -405,20 +412,40 @@ GO
 CREATE PROCEDURE Migracion_Provincia 
 AS 
 BEGIN 
+    -- Cliente
     INSERT INTO Provincia (provincia_nombre) 
-    SELECT DISTINCT Cliente_Provincia AS prov_nombre1
-    FROM gd_esquema.Maestra;
+    SELECT DISTINCT Cliente_Provincia
+    FROM gd_esquema.Maestra
+    WHERE Cliente_Provincia IS NOT NULL
+    AND NOT EXISTS (
+        SELECT 1 
+        FROM Provincia
+        WHERE Provincia.provincia_nombre = Maestra.Cliente_Provincia
+    );
 
+    -- Sucursal
     INSERT INTO Provincia (provincia_nombre)  
-    SELECT DISTINCT Sucursal_Provincia AS prov_nombre2
-    FROM gd_esquema.Maestra;
-    
+    SELECT DISTINCT Sucursal_Provincia
+    FROM gd_esquema.Maestra
+    WHERE Sucursal_Provincia IS NOT NULL
+    AND NOT EXISTS (
+        SELECT 1 
+        FROM Provincia
+        WHERE Provincia.provincia_nombre = Maestra.Sucursal_Provincia
+    );
+
+    -- Proveedor
     INSERT INTO Provincia (provincia_nombre) 
-    SELECT DISTINCT Proveedor_Provincia AS prov_nombre3
-    FROM gd_esquema.Maestra;
+    SELECT DISTINCT Proveedor_Provincia
+    FROM gd_esquema.Maestra
+    WHERE Proveedor_Provincia IS NOT NULL
+    AND NOT EXISTS (
+        SELECT 1 
+        FROM Provincia
+        WHERE Provincia.provincia_nombre = Maestra.Proveedor_Provincia
+    );
 END
 GO
-
 
 -- LOCALIDAD
 CREATE PROCEDURE Migracion_Localidad
@@ -429,21 +456,22 @@ BEGIN
         Maestra.Cliente_Localidad,
         Provincia.provincia_id
     FROM gd_esquema.Maestra AS Maestra
-    LEFT JOIN Provincia on Maestra.Cliente_Localidad = Provincia.provincia_nombre
-    WHERE NOT EXISTS (
+    LEFT JOIN Provincia on Maestra.Cliente_Provincia = Provincia.provincia_nombre
+    WHERE Maestra.Cliente_Localidad IS NOT NULL
+	AND NOT EXISTS (
         SELECT 1
         FROM Localidad
         WHERE Localidad.localidad_nombre = Maestra.Cliente_Localidad
         and Localidad.localidad_provincia = Provincia.provincia_id
     );
-
     INSERT INTO Localidad (localidad_nombre, localidad_provincia)
     SELECT DISTINCT 
         Maestra.Sucursal_Localidad,
         Provincia.provincia_id
     FROM gd_esquema.Maestra AS Maestra
-    LEFT JOIN Provincia on Maestra.Sucursal_Localidad = Provincia.provincia_nombre
-    WHERE NOT EXISTS (
+    LEFT JOIN Provincia on Maestra.Sucursal_Provincia = Provincia.provincia_nombre
+    WHERE Maestra.Sucursal_Localidad IS NOT NULL 
+	AND NOT EXISTS (
         SELECT 1
         FROM Localidad
         WHERE Localidad.localidad_nombre = Maestra.Sucursal_Localidad
@@ -455,8 +483,9 @@ BEGIN
         Maestra.Proveedor_Localidad,
         Provincia.provincia_id
     FROM gd_esquema.Maestra AS Maestra
-    LEFT JOIN Provincia on Maestra.Proveedor_Localidad = Provincia.provincia_nombre
-    WHERE NOT EXISTS (
+    LEFT JOIN Provincia on Maestra.Proveedor_Provincia = Provincia.provincia_nombre
+    WHERE Maestra.Proveedor_Localidad IS NOT NULL 
+	AND NOT EXISTS (
         SELECT 1
         FROM Localidad
         WHERE Localidad.localidad_nombre = Maestra.Proveedor_Localidad
@@ -465,56 +494,11 @@ BEGIN
 END
 GO
 
--- DIRECCION
-CREATE PROCEDURE Migracion_Direccion
-AS
-BEGIN
-    INSERT INTO Direccion (dire_direccion, direccion_localidad_num)
-    SELECT DISTINCT 
-        Cliente_Direccion,
-        localidad_num
-    FROM gd_esquema.Maestra AS Maestra
-    LEFT JOIN Localidad ON Maestra.Cliente_Localidad = localidad_nombre
-    WHERE NOT EXISTS (
-        SELECT 1
-        FROM Direccion
-        WHERE dire_direccion = Maestra.Cliente_Direccion
-        AND direccion_localidad_num = localidad_num
-    );
-
-    INSERT INTO Direccion (dire_direccion, direccion_localidad_num)
-    SELECT DISTINCT 
-        Sucursal_Direccion,
-        localidad_num
-    FROM gd_esquema.Maestra AS Maestra
-    LEFT JOIN Localidad ON Maestra.Cliente_Localidad = localidad_nombre
-    WHERE NOT EXISTS (
-        SELECT 1
-        FROM Direccion
-        WHERE dire_direccion = Maestra.Cliente_Direccion
-        AND direccion_localidad_num = localidad_num
-    );
-    
-    INSERT INTO Direccion (dire_direccion, direccion_localidad_num)
-    SELECT DISTINCT 
-        Proveedor_Direccion,
-        localidad_num
-    FROM gd_esquema.Maestra AS Maestra
-    LEFT JOIN Localidad ON Maestra.Cliente_Localidad = localidad_nombre
-    WHERE NOT EXISTS (
-        SELECT 1
-        FROM Direccion
-        WHERE dire_direccion = Maestra.Cliente_Direccion
-        AND direccion_localidad_num = localidad_num
-    );
-END 
-GO
-
 -- CONTACTO
 CREATE PROCEDURE Migracion_Contacto 
 AS 
 BEGIN
-    INSERT INTO Contacto (contacto_mail, contacto_num)
+    INSERT INTO Contacto (contacto_mail, contacto_telefono)
     SELECT DISTINCT 
         Cliente_Mail,
         Cliente_Telefono
@@ -525,7 +509,7 @@ BEGIN
         WHERE contacto_telefono = Maestra.Cliente_Telefono
     );
 
-    INSERT INTO Contacto (contacto_mail, contacto_num)
+    INSERT INTO Contacto (contacto_mail, contacto_telefono)
     SELECT DISTINCT 
         Sucursal_mail,
         Sucursal_telefono
@@ -533,10 +517,10 @@ BEGIN
     WHERE NOT EXISTS (
         SELECT 1
         FROM Contacto
-        WHERE contacto_telefono = Maestra.Cliente_Telefono
+        WHERE contacto_telefono = Maestra.Sucursal_Telefono
     );
 
-    INSERT INTO Contacto (contacto_mail, contacto_num)
+    INSERT INTO Contacto (contacto_mail, contacto_telefono)
     SELECT DISTINCT 
         Proveedor_Mail,
         Proveedor_Telefono
@@ -544,7 +528,7 @@ BEGIN
     WHERE NOT EXISTS (
         SELECT 1
         FROM Contacto
-        WHERE contacto_telefono = Maestra.Cliente_Telefono
+        WHERE contacto_telefono = Maestra.Proveedor_Telefono
     );
 END 
 GO
@@ -553,20 +537,28 @@ GO
 CREATE PROCEDURE Migracion_Cliente
 AS
 BEGIN
-    INSERT INTO Cliente (cliente_direccion_num, cliente_contacto_num, cliente_dni, cliente_nombre, cliente_apellido, cliente_fechaNacimiento)
+    INSERT INTO Cliente (cliente_direccion, cliente_localidad_id, cliente_contacto_num, cliente_dni, cliente_nombre, cliente_apellido, cliente_fechaNacimiento)
     SELECT DISTINCT
-        Direccion.dire_numero,
+        Maestra.Cliente_Direccion,
+        Localidad.localidad_num,
         Contacto.contacto_num,
         Maestra.Cliente_dni,
         Maestra.Cliente_nombre,
         Maestra.Cliente_apellido,
         Maestra.Cliente_fechaNacimiento
     FROM gd_esquema.Maestra AS Maestra
-    LEFT JOIN Direccion ON Maestra.Cliente_Direccion = Direccion.dire_direccion
+    LEFT JOIN Localidad ON Maestra.Cliente_Localidad = Localidad.localidad_nombre
     LEFT JOIN Contacto ON Maestra.Cliente_Telefono = Contacto.contacto_telefono
         AND Maestra.Cliente_Mail = Contacto.contacto_mail
+    WHERE Maestra.Cliente_Dni IS NOT NULL 
+        AND Maestra.Cliente_Nombre IS NOT NULL
+        AND Maestra.Cliente_Apellido IS NOT NULL 
+        AND Maestra.Cliente_FechaNacimiento IS NOT NULL
+        AND Maestra.Cliente_Localidad IS NOT NULL
 END
 GO
+
+
 
 -- SUCURSAL ???????????????????????????
 CREATE PROCEDURE Migracion_Sucursal
@@ -575,20 +567,57 @@ BEGIN
     INSERT INTO Sucursal (sucursal_numero, sucursal_direccion_num, sucursal_contacto_num)
     SELECT DISTINCT
         Maestra.Sucursal_NroSucursal, 
-		Direccion.dire_numero, 
-		Contacto.contacto_num
+		Direccion.dire_numero
     FROM gd_esquema.Maestra AS Maestra
-    LEFT JOIN Direccion ON Maestra.Cliente_Direccion = Direccion.dire_direccion
-    LEFT JOIN Contacto ON Maestra.Cliente_Telefono = Contacto.contacto_telefono 
-        AND Maestra.Cliente_Mail = Contacto.contacto_mail
+    LEFT JOIN Direccion ON Maestra.Sucursal_Direccion = Direccion.dire_direccion
+    LEFT JOIN Localidad ON Maestra.Sucursal_Localidad = Localidad.localidad_nombre
+	LEFT JOIN Provincia ON Localidad.localidad_provincia = Provincia.provincia_id
+        AND Maestra.Sucursal_Provincia = Provincia.provincia_nombre
+    WHERE Maestra.Sucursal_NroSucursal IS NOT NULL
+    AND Direccion.dire_direccion IS NOT NULL
+    AND Localidad.localidad_num IS NOT NULL
+	AND Provincia.provincia_id IS NOT NULL
 END
 GO
+
+	SELECT DISTINCT
+		Maestra.Sucursal_NroSucursal, 
+		Localidad.localidad_num, 
+		Maestra.Sucursal_Direccion, 
+		Maestra.Sucursal_telefono, 
+		Maestra.Sucursal_mail
+	FROM gd_esquema.Maestra AS Maestra
+	LEFT JOIN Localidad ON Maestra.Sucursal_Localidad = Localidad.localidad_nombre
+	LEFT JOIN Provincia ON Localidad.localidad_provincia = Provincia.provincia_id
+		AND Maestra.Sucursal_Provincia = Provincia.provincia_nombre
+	WHERE Sucursal_NroSucursal IS NOT NULL
+	AND Localidad.localidad_num IS NOT NULL
+	AND Provincia.provincia_id IS NOT NULL
+
+select distinct Sucursal_NroSucursal, Sucursal_Provincia, Sucursal_Direccion, Sucursal_telefono, Sucursal_mail, Sucursal_Provincia from gd_esquema.Maestra
+ SELECT DISTINCT
+        Maestra.Sucursal_NroSucursal, 
+        Direccion.dire_direccion,
+        Direccion.direccion_localidad_num,
+        Localidad.localidad_nombre,
+        Localidad.localidad_provincia,
+        Provincia.provincia_nombre
+    FROM gd_esquema.Maestra AS Maestra
+    LEFT JOIN Direccion ON Maestra.Sucursal_Direccion = Direccion.dire_direccion
+    LEFT JOIN Contacto ON Maestra.Sucursal_telefono = Contacto.contacto_telefono 
+    LEFT JOIN Provincia ON Maestra.Sucursal_Provincia = Provincia.provincia_nombre
+    LEFT JOIN Localidad ON Maestra.Sucursal_Localidad = Localidad.localidad_nombre
+        AND Maestra.Sucursal_mail = Contacto.contacto_mail
+    WHERE Maestra.Sucursal_NroSucursal IS NOT NULL
+    AND Direccion.dire_direccion IS NOT NULL
+    AND Contacto.contacto_mail IS NOT NULL AND Contacto.contacto_telefono IS NOT NULL AND Maestra.Sucursal_NroSucursal = 202
+
 
 -- FACTURA
 CREATE PROCEDURE Migracion_Factura
 AS
 BEGIN
-SET IDENTITY_INSERT Cliente ON
+--SET IDENTITY_INSERT Cliente ON
     INSERT INTO Factura (fact_numero, fact_sucursal_num, fact_cliente_num, fact_fecha, fact_total)
     SELECT DISTINCT
     Maestra.factura_numero,
@@ -771,10 +800,10 @@ GO
 -- DETALLE FACTURA ---------------------------------------DUDASSSSSSSSSSSSSSSSSSS_____________________________
 CREATE PROCEDURE Migracion_Detalle_Factura
 AS
-SET IDENTITY_INSERT Detalle_Pedido ON
+SET IDENTITY_INSERT Detalle_Factura ON
 BEGIN
-    INSERT INTO Detalle_Factura (detalle_f_factura_num,item_f_precioUnitario, 
-        item_f_cantidad, detalle_f_pedido_numero, detalle_f_det_pedido)
+    INSERT INTO Detalle_Factura (detalle_f_numero,detalle_f_factura_num,item_f_precioUnitario, 
+        item_f_cantidad, detalle_f_det_pedido)
     SELECT DISTINCT
     Factura.fact_numero,
     Maestra.detalle_factura_precio,
@@ -783,10 +812,8 @@ BEGIN
     Detalle_Pedido.detalle_p_numero
     FROM gd_esquema.Maestra
     LEFT JOIN Factura ON Maestra.Factura_Numero = Factura.fact_numero
-    LEFT JOIN Detalle_Pedido ON Maestra.Detalle_Pedido_Cantidad = Detalle_Pedido.detalle_p_cantidad
-        AND Maestra.Detalle_Pedido_Precio = Detalle_Pedido.detalle_p_precio
-    LEFT JOIN Pedido ON Detalle_Pedido.detalle_p_pedido_numero = Pedido.pedido_numero 
-        AND Maestra.Pedido_Numero = Pedido.pedido_numero
+    JOIN Pedido ON Maestra.Pedido_Numero = Pedido.pedido_numero
+	JOIN Detalle_Pedido ON pedido.pedido_numero = detalle_pedido.detalle_p_numero
 END 
 GO
 /*
@@ -812,17 +839,16 @@ END
 GO
 */
 /*EXECUTES*/
-
-execute Migracion_Estado; -- ?
-execute Migracion_Sillon_Medida;
-execute Migracion_Sillon_Modelo;
+execute Migracion_Estado; -- anda
+execute Migracion_Sillon_Medida; -- anda
+execute Migracion_Sillon_Modelo; -- anda
 execute Migracion_Material;-- anda
 execute Migracion_Tela; -- anda
 execute Migracion_Madera; -- anda
 execute Migracion_Relleno; -- anda
-execute Migracion_Provincia; -- ? creo que anda
-execute Migracion_Localidad; -- ?
-execute Migracion_Direccion; -- ?
+execute Migracion_Provincia; -- anda
+execute Migracion_Localidad; -- anda
+execute Migracion_Direccion; -- anda
 execute Migracion_Contacto; -- ?
 execute Migracion_Cliente;
 execute Migracion_Sucursal;
@@ -837,3 +863,118 @@ execute Migracion_Pedido_Cancelacion; -- *
 execute Migracion_Detalle_Compra; -- +
 execute Migracion_Detalle_Pedido;
 execute Migracion_Detalle_Factura; -- *
+
+
+select distinct sillon_modelo_codigo, Sillon_Modelo, Sillon_Modelo_Descripcion, Sillon_Modelo_Descripcion , sillon_modelo_precio from gd_esquema.Maestra
+select * from Sillon_modelo
+
+select * from provincia
+
+select * from estado
+
+select localidad_num, localidad_nombre from localidad
+
+select * from gd_esquema.Maestra
+where Sucursal_Direccion = 'Avenida Mart�n Garc�a N� 5644'
+or Cliente_direccion = 'Avenida Mart�n Garc�a N� 5644'
+or proveedor_direccion = 'Avenida Mart�n Garc�a N� 5644'
+
+select * from localidad
+order by localidad_nombre
+
+where direccion_localidad_num is null
+
+select dire_direccion, direccion_localidad_num from direccion
+group by dire_direccion, direccion_localidad_num
+
+select distinct localidad_nombre from localidad
+group by localidad_nombre
+
+select cliente_localidad, cliente_provincia from gd_esquema.Maestra
+where cliente_localidad is not null
+and cliente_provincia is not null
+union
+select sucursal_localidad, sucursal_provincia from gd_esquema.Maestra
+where sucursal_localidad is not null
+and sucursal_provincia is not null
+union
+select proveedor_localidad, proveedor_provincia from gd_esquema.Maestra
+where proveedor_localidad is not null
+and proveedor_provincia is not null
+
+
+select cliente_direccion, cliente_localidad from gd_esquema.Maestra
+where cliente_direccion is not null
+
+union all
+
+select sucursal_direccion, Sucursal_Localidad from gd_esquema.Maestra
+where sucursal_direccion is not null
+
+union all
+
+select proveedor_direccion, Proveedor_Localidad from gd_esquema.Maestra
+where proveedor_direccion is not null
+
+
+SELECT DISTINCT 
+    dir.direccion AS dire_direccion, 
+    l.localidad_num AS direccion_localidad_num
+FROM (
+    SELECT cliente_direccion AS direccion, cliente_localidad AS localidad
+    FROM gd_esquema.Maestra
+    WHERE cliente_direccion IS NOT NULL AND cliente_localidad IS NOT NULL
+
+    UNION
+
+    SELECT sucursal_direccion, sucursal_localidad
+    FROM gd_esquema.Maestra
+    WHERE sucursal_direccion IS NOT NULL AND sucursal_localidad IS NOT NULL
+
+    UNION
+
+    SELECT proveedor_direccion, proveedor_localidad
+    FROM gd_esquema.Maestra
+    WHERE proveedor_direccion IS NOT NULL AND proveedor_localidad IS NOT NULL
+) AS dir
+JOIN Localidad l ON dir.localidad = l.localidad_nombre;
+
+
+
+select * from Contacto where contacto_telefono is not null and contacto_mail is not null
+
+select distinct dir.direccion, dir.localidad from (
+    SELECT Cliente_Mail AS direccion, Cliente_Telefono AS localidad
+    FROM gd_esquema.Maestra
+    WHERE Cliente_Mail IS NOT NULL AND Cliente_Telefono IS NOT NULL
+
+    UNION
+
+    SELECT Sucursal_mail, Sucursal_telefono
+    FROM gd_esquema.Maestra
+    WHERE sucursal_direccion IS NOT NULL AND sucursal_localidad IS NOT NULL
+
+    UNION
+
+    SELECT Proveedor_Mail, Proveedor_Telefono
+    FROM gd_esquema.Maestra
+    WHERE proveedor_direccion IS NOT NULL AND proveedor_localidad IS NOT NULL
+) As dir
+
+SELECT COUNT(*) 
+FROM (
+    SELECT DISTINCT 
+        Maestra.Cliente_dni, 
+        Maestra.Cliente_nombre, 
+        Maestra.Cliente_apellido, 
+        Maestra.Cliente_fechaNacimiento, 
+        Maestra.Cliente_Direccion, 
+        Maestra.Cliente_Telefono, 
+        Maestra.Cliente_Mail
+    FROM gd_esquema.Maestra AS Maestra
+) AS distintos_clientes;
+
+SELECT COUNT(*) FROM Cliente;
+
+select Sucursal_NroSucursal, Sucursal_Direccion, Sucursal_Provincia, Sucursal_mail, Sucursal_telefono from gd_esquema.Maestra
+group by Sucursal_NroSucursal, Sucursal_Direccion, Sucursal_Provincia, Sucursal_mail, Sucursal_telefono
