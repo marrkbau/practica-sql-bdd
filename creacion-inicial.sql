@@ -978,3 +978,9 @@ SELECT COUNT(*) FROM Cliente;
 
 select Sucursal_NroSucursal, Sucursal_Direccion, Sucursal_Provincia, Sucursal_mail, Sucursal_telefono from gd_esquema.Maestra
 group by Sucursal_NroSucursal, Sucursal_Direccion, Sucursal_Provincia, Sucursal_mail, Sucursal_telefono
+
+
+
+
+
+

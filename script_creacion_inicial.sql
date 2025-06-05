@@ -8,21 +8,21 @@ SELECT @DropConstraints += 'ALTER TABLE ' + QUOTENAME(OBJECT_SCHEMA_NAME(parent_
                         +  QUOTENAME(OBJECT_NAME(parent_object_id)) + ' ' + 'DROP CONSTRAINT' + QUOTENAME(name)
 FROM sys.foreign_keys
 EXECUTE sp_executesql @DropConstraints;
-
-
-PRINT '--- CONSTRAINTS DROPEADOS ---';
 GO
+
 
 DECLARE @DropProcedures NVARCHAR(max) = ''
 SELECT @DropProcedures += 'DROP PROCEDURE ' + QUOTENAME(SCHEMA_NAME(schema_id)) + '.' + QUOTENAME(name) + ';'
 FROM sys.procedures;
 EXECUTE sp_executesql @DropProcedures;
+GO
 
 DECLARE @DropTables NVARCHAR(max) = ''
 SELECT @DropTables += 'DROP TABLE BNFL. ' + QUOTENAME(TABLE_NAME)
 FROM INFORMATION_SCHEMA.TABLES
 WHERE TABLE_SCHEMA = 'BNFL' and TABLE_TYPE = 'BASE TABLE'
 EXECUTE sp_executesql @DropTables;
+GO
 
 IF EXISTS (SELECT name FROM sys.schemas WHERE name = 'BNFL')
     DROP SCHEMA BNFL
@@ -30,11 +30,6 @@ GO
 
 CREATE SCHEMA BNFL;
 GO
-
-PRINT '--- PROCEDURES DROPEADOS ---';
-GO
-
-
 
 CREATE TABLE [BNFL].[Cliente] (
     cliente_numero BIGINT IDENTITY NOT NULL PRIMARY KEY,
@@ -46,8 +41,7 @@ CREATE TABLE [BNFL].[Cliente] (
     cliente_direccion NVARCHAR(255),
     cliente_localidad_id BIGINT NOT NULL
 )
--- select * from pedido
-create table [BNFL].[Pedido] (
+CREATE TABLE [BNFL].[Pedido] (
     pedido_id BIGINT IDENTITY NOT NULL PRIMARY KEY,
     pedido_numero BIGINT NOT NULL,
     pedido_cliente_num BIGINT NOT NULL,
@@ -55,12 +49,11 @@ create table [BNFL].[Pedido] (
     pedido_estado_num BIGINT NOT NULL
 )
 
-create table [BNFL].[Estado] (
+CREATE TABLE [BNFL].[Estado] (
     estado_numero BIGINT IDENTITY NOT NULL PRIMARY KEY,
     estado_descripcion NVARCHAR(255)
 )
 
--- select * from envio  17408 
 CREATE TABLE [BNFL].[Envio] (
     envio_id BIGINT IDENTITY NOT NULL PRIMARY KEY,
     envio_numero BIGINT NOT NULL,
@@ -70,7 +63,6 @@ CREATE TABLE [BNFL].[Envio] (
     envio_importeTraslado DECIMAL(18,2),
     Envio_importeSubida DECIMAL(18,2)
 )
--- SELECT * from sucursal       9
 
 CREATE TABLE [BNFL].[Sucursal] (
     sucursal_id BIGINT IDENTITY NOT NULL PRIMARY KEY,
@@ -105,8 +97,8 @@ CREATE TABLE [BNFL].[Contacto] (
     contacto_mail NVARCHAR(255),
     contacto_telefono NVARCHAR(255)
 )
--- select * from factura 17408 
-create table [BNFL].[Factura] (
+
+CREATE TABLE [BNFL].[Factura] (
     fact_id BIGINT IDENTITY NOT NULL PRIMARY KEY,
     fact_numero BIGINT NOT NULL,
     fact_sucursal_id BIGINT NOT NULL,
@@ -115,9 +107,9 @@ create table [BNFL].[Factura] (
     fact_total DECIMAL(38,2)
 )
 
-create table [BNFL].[Detalle_Factura] (
+CREATE TABLE [BNFL].[Detalle_Factura] (
     detalle_f_factura_id BIGINT not null,
-    detalle_f_numero BIGINT IDENTITY not null,
+    detalle_f_numero BIGINT not null,
     detalle_f_pedido_numero BIGINT NOT NULL,
     detalle_f_det_pedido BIGINT NOT NULL, 
     primary key(detalle_f_factura_id, detalle_f_numero),
@@ -125,22 +117,22 @@ create table [BNFL].[Detalle_Factura] (
     item_f_cantidad DECIMAL(18,0)
 )
 
-create table [BNFL].[Detalle_Pedido] (
+CREATE TABLE [BNFL].[Detalle_Pedido] (
     detalle_p_pedido_id BIGINT NOT NULL, 
-    detalle_p_numero BIGINT IDENTITY NOT NULL,
+    detalle_p_numero BIGINT NOT NULL,
     primary key(detalle_p_pedido_id, detalle_p_numero),
     detalle_p_sillon_numero BIGINT NOT NULL,
     detalle_p_cantidad BIGINT,
     detalle_p_precio DECIMAL(18,2)
 )
 
-create table [BNFL].[Sillon] (
+CREATE TABLE [BNFL].[Sillon] (
     sillon_codigo BIGINT primary key,
     sillon_sillon_m_num BIGINT NOT NULL,
     sillon_sillon_medida_num BIGINT NOT NULL
 )
 
-create table [BNFL].[Material] (
+CREATE TABLE [BNFL].[Material] (
     material_numero BIGINT IDENTITY primary key,
     material_tipo NVARCHAR(255),
     material_nombre NVARCHAR(255),
@@ -148,25 +140,25 @@ create table [BNFL].[Material] (
     material_precio DECIMAL(38,2)
 )
 
-create table [BNFL].[Tela] (
+CREATE TABLE [BNFL].[Tela] (
     tela_numero BIGINT IDENTITY primary key,
     tela_color NVARCHAR(255),
     tela_textura NVARCHAR(255)
 )
 
-create table [BNFL].[Madera] (
+CREATE TABLE [BNFL].[Madera] (
     madera_numero BIGINT IDENTITY primary key,
     madera_color NVARCHAR(255),
     madera_dureza NVARCHAR(255)
 )
 
-create table [BNFL].[Relleno] (
+CREATE TABLE [BNFL].[Relleno] (
     relleno_num BIGINT IDENTITY NOT NULL primary key,
     relleno_densidad DECIMAL(38,2)
 )
 
-create table [BNFL].[Detalle_Compra] (
-    detalle_comp_numero BIGINT IDENTITY NOT NULL,
+CREATE TABLE [BNFL].[Detalle_Compra] (
+    detalle_comp_numero BIGINT NOT NULL,
     detalle_comp_compra_num BIGINT NOT NULL,
     primary key(detalle_comp_numero, detalle_comp_compra_num),
     detalle_comp_material BIGINT NOT NULL,
@@ -174,7 +166,7 @@ create table [BNFL].[Detalle_Compra] (
     detalle_comp_cantidad DECIMAL(18,0)
 )
 
-create table [BNFL].[Compra] (
+CREATE TABLE [BNFL].[Compra] (
     compra_id BIGINT IDENTITY NOT NULL PRIMARY KEY,
     compra_numero BIGINT NOT NULL,
     compra_proved_num BIGINT NOT NULL,
@@ -183,8 +175,7 @@ create table [BNFL].[Compra] (
     compra_total DECIMAL(18,2)
 )
 
-
-create table [BNFL].[Pedido_Cancelacion] (
+CREATE TABLE [BNFL].[Pedido_Cancelacion] (
     pedido_can_numero BIGINT IDENTITY NOT NULL primary key,
     pedido_can_pedido_id BIGINT NOT NULL,
     pedido_can_motivo varchar(255),
@@ -240,9 +231,6 @@ ALTER TABLE [BNFL].[Factura]
 ADD FOREIGN KEY ([fact_sucursal_id]) REFERENCES [BNFL].[Sucursal]([sucursal_id]),
     FOREIGN KEY ([fact_cliente_num]) REFERENCES [BNFL].[Cliente]([cliente_numero]);
 
-ALTER TABLE [BNFL].[Detalle_Factura]
-ADD FOREIGN KEY ([detalle_f_factura_id]) REFERENCES [BNFL].[Factura]([fact_id]);
-
 ALTER TABLE [BNFL].[Envio]
 ADD FOREIGN KEY ([envio_fact_id]) REFERENCES [BNFL].[Factura]([fact_id]);
 
@@ -267,23 +255,25 @@ ADD FOREIGN KEY ([detalle_comp_compra_num]) REFERENCES [BNFL].[Compra]([compra_i
     FOREIGN KEY ([detalle_comp_material]) REFERENCES [BNFL].[Material]([material_numero]);
 
 ALTER TABLE [BNFL].[Detalle_Factura]
+ADD FOREIGN KEY ([detalle_f_factura_id]) REFERENCES [BNFL].[Factura]([fact_id]);
+
+ALTER TABLE [BNFL].[Detalle_Factura]
 ADD FOREIGN KEY ([detalle_f_pedido_numero], [detalle_f_det_pedido])
         REFERENCES [BNFL].[Detalle_Pedido]([detalle_p_pedido_id], [detalle_p_numero])
-
-
-PRINT '--- TABLAS CREADAS DE FORMA EXITOSA ---';
 GO
-/*Procedures*/
 
+/*Procedures*/
 -- ESTADO
 CREATE PROCEDURE [BNFL].Migracion_Estado
 AS 
 BEGIN
-    INSERT INTO Estado (estado_descripcion)
-VALUES 
-    ('PENDIENTE'),
-    ('CANCELADO'),
-    ('ENTREGADO');
+    INSERT INTO [BNFL].[Estado] (estado_descripcion) 
+    SELECT DISTINCT 
+        Maestra.Pedido_Estado
+    FROM gd_esquema.Maestra AS Maestra
+    WHERE Pedido_Estado IS NOT NULL
+    UNION 
+    SELECT 'PENDIENTE'
 END 
 GO
 
@@ -291,17 +281,17 @@ GO
 CREATE PROCEDURE [BNFL].Migracion_Sillon_Medida
 AS
 BEGIN 
-    INSERT INTO Sillon_Medida (sillon_med_alto, sillon_med_ancho, sillon_med_profundidad, sillon_med_precio)
+    INSERT INTO [BNFL].[Sillon_Medida] (sillon_med_alto, sillon_med_ancho, sillon_med_profundidad, sillon_med_precio)
     SELECT DISTINCT 
-        Sillon_Medida_Alto,
-        Sillon_Medida_Ancho,
-        Sillon_Medida_Profundidad,
-        Sillon_Medida_Precio
-    FROM gd_esquema.Maestra
-	WHERE Sillon_Medida_Alto IS NOT NULL 
-	AND Sillon_Medida_Ancho IS NOT NULL 
-	AND Sillon_Medida_Profundidad IS NOT NULL 
-	AND Sillon_Medida_Precio IS NOT NULL 
+        Maestra.Sillon_Medida_Alto,
+        Maestra.Sillon_Medida_Ancho,
+        Maestra.Sillon_Medida_Profundidad,
+        Maestra.Sillon_Medida_Precio
+    FROM gd_esquema.Maestra AS Maestra
+	WHERE Maestra.Sillon_Medida_Alto IS NOT NULL 
+	AND Maestra.Sillon_Medida_Ancho IS NOT NULL 
+	AND Maestra.Sillon_Medida_Profundidad IS NOT NULL 
+	AND Maestra.Sillon_Medida_Precio IS NOT NULL 
 END
 GO
 
@@ -309,17 +299,17 @@ GO
 CREATE PROCEDURE [BNFL].Migracion_Sillon_Modelo
 AS 
 BEGIN 
-INSERT INTO Sillon_Modelo (sillon_mod_codigo,sillon_modelo,sillon_mod_descripcion,silon_mod_precio)
+INSERT INTO [BNFL].[Sillon_Modelo] (sillon_mod_codigo,sillon_modelo,sillon_mod_descripcion,silon_mod_precio)
     SELECT DISTINCT 
-        Sillon_Modelo_Codigo,
-        Sillon_Modelo,
-        Sillon_Modelo_Descripcion,
-        Sillon_Modelo_Precio
-    FROM gd_esquema.Maestra
-	WHERE Sillon_Modelo_Codigo IS NOT NULL
-	AND Sillon_Modelo IS NOT NULL
-	AND Sillon_Modelo_Descripcion IS NOT NULL
-	AND Sillon_Modelo_Precio IS NOT NULL
+        Maestra.Sillon_Modelo_Codigo,
+        Maestra.Sillon_Modelo,
+        Maestra.Sillon_Modelo_Descripcion,
+        Maestra.Sillon_Modelo_Precio
+    FROM gd_esquema.Maestra AS Maestra
+	WHERE Maestra.Sillon_Modelo_Codigo IS NOT NULL
+	AND Maestra.Sillon_Modelo IS NOT NULL
+	AND Maestra.Sillon_Modelo_Descripcion IS NOT NULL
+	AND Maestra.Sillon_Modelo_Precio IS NOT NULL
 END
 GO
 
@@ -327,17 +317,17 @@ GO
 CREATE PROCEDURE [BNFL].Migracion_Material
 AS
 BEGIN
-INSERT INTO Material (material_tipo, material_nombre, material_descripcion, material_precio)
+INSERT INTO [BNFL].[Material] (material_tipo, material_nombre, material_descripcion, material_precio)
     SELECT DISTINCT
-        material_tipo,
-        material_nombre,
-        material_descripcion,
-        material_precio
-    FROM gd_esquema.Maestra
-	WHERE material_tipo IS NOT NULL
-	AND material_nombre IS NOT NULL
-	AND material_descripcion IS NOT NULL
-	AND material_precio IS NOT NULL
+        Maestra.Material_Tipo,
+        Maestra.Material_Nombre,
+        Maestra.Material_Descripcion,
+        Maestra.Material_Precio
+    FROM gd_esquema.Maestra AS Maestra
+	WHERE Maestra.material_tipo IS NOT NULL
+	AND Maestra.material_nombre IS NOT NULL
+	AND Maestra.material_descripcion IS NOT NULL
+	AND Maestra.material_precio IS NOT NULL
 END
 GO
 
@@ -345,14 +335,14 @@ GO
 CREATE PROCEDURE [BNFL].Migracion_Tela
 AS
 BEGIN
-SET IDENTITY_INSERT Tela ON
-INSERT INTO Tela (tela_numero, tela_color, tela_textura)
+SET IDENTITY_INSERT [BNFL].Tela ON
+INSERT INTO [BNFL].[Tela] (tela_numero, tela_color, tela_textura)
     SELECT DISTINCT
         Material.material_numero,
         Maestra.tela_color,
         Maestra.tela_textura
     FROM gd_esquema.Maestra AS Maestra
-    LEFT JOIN Material on Maestra.Material_Tipo = material.material_tipo 
+    LEFT JOIN [BNFL].[Material] AS Material on Maestra.Material_Tipo = material.material_tipo 
         AND Maestra.Material_Nombre = Material.material_nombre
 		AND Maestra.Material_Descripcion = Material.material_descripcion
 		AND Maestra.Material_Precio = Material.material_precio
@@ -364,14 +354,14 @@ GO
 CREATE PROCEDURE [BNFL].Migracion_Madera
 AS
 BEGIN
-SET IDENTITY_INSERT Madera ON
-INSERT INTO Madera (madera_numero, madera_color, madera_dureza)
+SET IDENTITY_INSERT [BNFL].Madera ON
+INSERT INTO [BNFL].[Madera] (madera_numero, madera_color, madera_dureza)
     SELECT DISTINCT
         Material.material_numero,
         Maestra.Madera_Color,
-        Maestra.Madera_Color
+        Maestra.Madera_Dureza
     FROM gd_esquema.Maestra AS Maestra
-    LEFT JOIN Material on Maestra.Material_Tipo = material.material_tipo
+    LEFT JOIN [BNFL].[Material] AS Material on Maestra.Material_Tipo = material.material_tipo
         AND Maestra.Material_Nombre = Material.material_nombre
 		AND Maestra.Material_Descripcion = Material.material_descripcion
 		AND Maestra.Material_Precio = Material.material_precio
@@ -383,20 +373,19 @@ GO
 CREATE PROCEDURE [BNFL].Migracion_Relleno
 AS
 BEGIN
-SET IDENTITY_INSERT Relleno ON
-INSERT INTO Relleno (relleno_num, relleno_densidad)
+SET IDENTITY_INSERT [BNFL].Relleno ON
+INSERT INTO [BNFL].[Relleno] (relleno_num, relleno_densidad)
     SELECT DISTINCT
         Material.material_numero,
         Maestra.Relleno_Densidad
     FROM gd_esquema.Maestra AS Maestra
-    LEFT JOIN Material on Maestra.Material_Tipo = material.material_tipo
+    LEFT JOIN [BNFL].[Material] AS Material on Maestra.Material_Tipo = material.material_tipo
         AND Maestra.Material_Nombre = Material.material_nombre
 		AND Maestra.Material_Descripcion = Material.material_descripcion
 		AND Maestra.Material_Precio = Material.material_precio
 	WHERE Maestra.Material_Tipo = 'Relleno'    
 END
 GO
-
 -- PROVINCIA
 CREATE PROCEDURE [BNFL].Migracion_Provincia 
 AS 
@@ -547,8 +536,7 @@ BEGIN
 END
 GO
 
-
--- SUCURSAL ???????????????????????????
+-- SUCURSAL
 CREATE PROCEDURE [BNFL].Migracion_Sucursal
 AS
 BEGIN
@@ -570,6 +558,7 @@ BEGIN
 END
 GO
 
+-- FACTURA
 CREATE PROCEDURE [BNFL].Migracion_Factura
 AS
 BEGIN
@@ -619,7 +608,6 @@ BEGIN
 END 
 GO
 
-
 -- SILLON
 CREATE PROCEDURE [BNFL].Migracion_Sillon
 AS
@@ -644,6 +632,7 @@ BEGIN
 END
 GO
 
+-- MATERIAL SILLON
 CREATE PROCEDURE [BNFL].Migracion_Material_Sillon
 AS 
 BEGIN
@@ -664,7 +653,6 @@ BEGIN
         AND Maestra.Sillon_Codigo IS NOT NULL
 END 
 GO
-
 
 -- PROVEEDOR
 CREATE PROCEDURE [BNFL].Migracion_Proveedor
@@ -692,6 +680,7 @@ BEGIN
 END 
 GO
 
+-- COMPRA
 CREATE PROCEDURE [BNFL].Migracion_Compra 
 AS
 BEGIN
@@ -707,7 +696,8 @@ BEGIN
     LEFT JOIN [BNFL].[Proveedor] AS Proveedor ON Maestra.Proveedor_Cuit = Proveedor.proved_cuit
         AND Maestra.Proveedor_RazonSocial = Proveedor.proved_razonSocial
     WHERE Maestra.Compra_Numero IS NOT NULL 
-        AND Sucursal.sucursal_numero IS NOT NULL
+		AND Maestra.Compra_Fecha IS NOT NULL
+        AND Sucursal.sucursal_id IS NOT NULL
         AND Proveedor.proved_num IS NOT NULL
 END
 GO
@@ -736,6 +726,7 @@ BEGIN
 END
 GO
 
+-- PEDIDO CANCELACION
 CREATE PROCEDURE [BNFL].Migracion_Pedido_Cancelacion
 AS
 BEGIN
@@ -748,114 +739,196 @@ BEGIN
     LEFT JOIN [BNFL].[Pedido] AS Pedido on Pedido.pedido_numero = Maestra.Pedido_numero
         WHERE Maestra.Pedido_Cancelacion_Fecha IS NOT NULL 
         AND Maestra.Pedido_Cancelacion_Motivo IS NOT NULL
-        order by pedido_id
 END
 GO
 
-
 -- DETALLE COMPRA
-CREATE PROCEDURE Migracion_Detalle_Compra
+CREATE PROCEDURE [BNFL].Migracion_Detalle_Compra
 AS
 BEGIN
-    INSERT INTO Detalle_Compra (detalle_comp_compra_num, detalle_comp_material, 
+    INSERT INTO [BNFL].Detalle_Compra (detalle_comp_numero, detalle_comp_compra_num, detalle_comp_material, 
         detalle_comp_precioUnitario, detalle_comp_cantidad)
     SELECT DISTINCT
-    Maestra.Compra_Numero,
+	ROW_NUMBER() OVER (PARTITION BY Maestra.Compra_Numero ORDER BY Maestra.Material_Nombre) AS detalle_comp_item_id,
+    Compra.compra_id,
     Material.material_numero,
 	Maestra.Detalle_Compra_Precio,
 	Maestra.Detalle_Compra_Cantidad
     FROM gd_esquema.Maestra AS Maestra
-    LEFT JOIN Material ON Maestra.Material_tipo = Material.material_tipo
+    LEFT JOIN [BNFL].Material AS Material ON Maestra.Material_tipo = Material.material_tipo
         AND Maestra.Material_Nombre = Material.material_nombre
         AND Maestra.Material_Descripcion = Material.material_descripcion
         AND Maestra.Material_Precio = Material.material_precio
+	LEFT JOIN [BNFL].Compra AS Compra ON Maestra.Compra_Numero = Compra.compra_numero
+	WHERE Maestra.Compra_Numero IS NOT NULL
+	AND Maestra.Detalle_Compra_Precio IS NOT NULL
+	AND Maestra.Detalle_Compra_Cantidad IS NOT NULL
 END 
 GO
 
 -- DETALLE PEDIDO
-CREATE PROCEDURE Migracion_Detalle_Pedido
+CREATE PROCEDURE [BNFL].Migracion_Detalle_Pedido
 AS
 BEGIN
-    INSERT INTO Detalle_Pedido (detalle_p_sillon_numero, detalle_p_pedido_numero, 
+    INSERT INTO [BNFL].Detalle_Pedido (detalle_p_numero, detalle_p_sillon_numero, detalle_p_pedido_id, 
     detalle_p_cantidad, detalle_p_precio)
     SELECT DISTINCT 
+	ROW_NUMBER() OVER (PARTITION BY Pedido.pedido_numero ORDER BY Pedido.Pedido_Numero) AS detalle_ped_item_id,
     Sillon.sillon_codigo,
-    Pedido.pedido_numero,
+    Pedido.pedido_id,
     Maestra.Detalle_Pedido_Cantidad,
     Maestra.Detalle_Pedido_Precio
     FROM gd_esquema.Maestra AS Maestra
-    LEFT JOIN Sillon ON Maestra.Sillon_Codigo = Sillon.sillon_codigo
-    LEFT JOIN Pedido ON Maestra.Pedido_Numero = Pedido.pedido_numero
+	JOIN [BNFL].Pedido ON Maestra.Pedido_Numero = Pedido.pedido_numero
+    JOIN [BNFL].Sillon ON Maestra.Sillon_Codigo = Sillon.sillon_codigo
+	WHERE Maestra.Detalle_Pedido_Cantidad IS NOT NULL
+	AND Maestra.Detalle_Pedido_Precio IS NOT NULL
+	AND Maestra.Pedido_Numero IS NOT NULL
 END
 GO
 
-
--- DETALLE FACTURA ---------------------------------------DUDASSSSSSSSSSSSSSSSSSS_____________________________
-CREATE PROCEDURE Migracion_Detalle_Factura
-AS
-SET IDENTITY_INSERT Detalle_Factura ON
+-- DETALLE FACTURA 
+CREATE PROCEDURE [BNFL].Migracion_Detalle_Factura
+AS 
 BEGIN
-    INSERT INTO Detalle_Factura (detalle_f_numero,detalle_f_factura_num,item_f_precioUnitario, 
-        item_f_cantidad, detalle_f_det_pedido)
-    SELECT DISTINCT
-    Factura.fact_numero,
-    Maestra.detalle_factura_precio,
-    Maestra.detalle_factura_cantidad,
-    Detalle_Pedido.detalle_p_pedido_numero,
-    Detalle_Pedido.detalle_p_numero
-    FROM gd_esquema.Maestra
-    LEFT JOIN Factura ON Maestra.Factura_Numero = Factura.fact_numero
-    JOIN Pedido ON Maestra.Pedido_Numero = Pedido.pedido_numero
-	JOIN Detalle_Pedido ON pedido.pedido_numero = detalle_pedido.detalle_p_numero
-END 
-GO
-/*
--- Detalle_Factura
-CREATE PROCEDURE Migracion_Detalle_Factura
-AS
-BEGIN
-    INSERT INTO Detalle_Factura (detalle_f_factura_num, item_f_precioUnitario, item_f_cantidad, detalle_f_det_pedido)
-    SELECT DISTINCT
-        f.fact_numero,
-        m.Detalle_Factura_Precio,
-        m.Detalle_Factura_Cantidad,
-        dp.detalle_p_numero
-    FROM gd_esquema.Maestra m
-    INNER JOIN Factura f ON m.Factura_Numero = f.fact_numero
-    INNER JOIN Pedido p ON m.Pedido_Numero = p.pedido_numero
-    INNER JOIN Detalle_Pedido dp ON p.pedido_numero = dp.detalle_p_pedido_numero
-        AND m.Detalle_Pedido_Cantidad = dp.detalle_p_cantidad
-        AND m.Detalle_Pedido_Precio = dp.detalle_p_precio
-    WHERE m.Factura_Numero IS NOT NULL 
-        AND m.Detalle_Factura_Precio IS NOT NULL
+    INSERT INTO [BNFL].[Detalle_Factura] (detalle_f_numero, detalle_f_factura_id, detalle_f_pedido_numero,
+     detalle_f_det_pedido, item_f_cantidad, item_f_precioUnitario)
+    SELECT DISTINCT 
+        ROW_NUMBER() OVER (PARTITION BY Factura.fact_id ORDER BY Factura.fact_id) AS detalle_comp_item_id,
+        Factura.fact_id,
+        Detalle_Pedido.detalle_p_pedido_id,
+        Detalle_Pedido.detalle_p_numero,
+        Maestra.Detalle_Factura_Cantidad,
+        Maestra.Detalle_Factura_Precio
+    FROM gd_esquema.Maestra AS Maestra
+    LEFT JOIN [BNFL].[Factura] AS Factura ON Maestra.Factura_Numero = Factura.fact_numero
+    LEFT JOIN [BNFL].[Pedido] AS Pedido ON Maestra.Pedido_Numero = Pedido.pedido_numero
+    LEFT JOIN [BNFL].[Detalle_Pedido] AS Detalle_Pedido ON Pedido.pedido_id = Detalle_Pedido.detalle_p_pedido_id
+        AND Maestra.Detalle_Pedido_Cantidad = Detalle_Pedido.detalle_p_cantidad 
+        AND Maestra.Detalle_Pedido_Precio = Detalle_Pedido.detalle_p_precio
+    WHERE Maestra.Factura_Numero IS NOT NULL
+        AND Maestra.Detalle_Factura_Precio IS NOT NULL
+        AND Pedido.pedido_id IS NOT NULL
+        AND Detalle_Pedido.detalle_p_numero IS NOT NULL
+        AND Detalle_Pedido.detalle_p_pedido_id IS NOT NULL
 END
 GO
-*/
 
-execute [BNFL].Migracion_Estado; -- anda
-execute [BNFL].Migracion_Sillon_Medida; -- anda
-execute [BNFL].Migracion_Sillon_Modelo; -- anda
-execute [BNFL].Migracion_Material;-- anda
-execute [BNFL].Migracion_Tela; -- anda
-execute [BNFL].Migracion_Madera; -- anda
-execute [BNFL].Migracion_Relleno; -- anda
-execute [BNFL].Migracion_Provincia; -- anda
-execute [BNFL].Migracion_Localidad; -- anda
-execute [BNFL].Migracion_Contacto; -- anda 
-execute [BNFL].Migracion_Cliente; -- anda
-execute [BNFL].Migracion_Sucursal; -- anda 
-execute [BNFL].Migracion_Factura; -- anda
-execute [BNFL].Migracion_Envio; -- anda
-execute [BNFL].Migracion_Sillon; -- anda
-execute [BNFL].Migracion_Material_Sillon; -- anda
-execute [BNFL].Migracion_Proveedor; -- anda
-execute [BNFL].Migracion_Compra; -- anda
-execute [BNFL].Migracion_Pedido; -- anda
-execute [BNFL].Migracion_Pedido_Cancelacion; -- anda
+execute [BNFL].Migracion_Estado; 
+execute [BNFL].Migracion_Sillon_Medida; 
+execute [BNFL].Migracion_Sillon_Modelo; 
+execute [BNFL].Migracion_Material;
+execute [BNFL].Migracion_Tela; 
+execute [BNFL].Migracion_Madera; 
+execute [BNFL].Migracion_Relleno; 
+execute [BNFL].Migracion_Provincia; 
+execute [BNFL].Migracion_Localidad; 
+execute [BNFL].Migracion_Contacto;  
+execute [BNFL].Migracion_Cliente; 
+execute [BNFL].Migracion_Sucursal;   
+execute [BNFL].Migracion_Factura; 
+execute [BNFL].Migracion_Envio; 
+execute [BNFL].Migracion_Sillon; 
+execute [BNFL].Migracion_Material_Sillon; 
+execute [BNFL].Migracion_Proveedor; 
+execute [BNFL].Migracion_Compra; 
+execute [BNFL].Migracion_Pedido; 
+execute [BNFL].Migracion_Pedido_Cancelacion; 
+execute [BNFL].Migracion_Detalle_Compra; 
+execute [BNFL].Migracion_Detalle_Pedido; 
+execute [BNFL].Migracion_Detalle_Factura; 
 
+PRINT ' MIGRACION EXITOSA '
 
-/*
-execute Migracion_Detalle_Compra; -- +
-execute Migracion_Detalle_Pedido;
-execute Migracion_Detalle_Factura; -- *
-*/
+/* PROVINCIA */
+CREATE INDEX IDX_PROVINCIA_ID ON [BNFL].[Provincia] (provincia_id);
+
+/* LOCALIDAD */
+CREATE INDEX IDX_LOCALIDAD_ID ON [BNFL].[Localidad] (localidad_num);
+CREATE INDEX IDX_LOCALIDAD_PROVINCIA ON [BNFL].[Localidad] (localidad_provincia);
+
+/* CLIENTE */
+CREATE INDEX IDX_CLIENTE_NUMERO ON [BNFL].[Cliente] (cliente_numero);
+CREATE INDEX IDX_CLIENTE_CONTACTO ON [BNFL].[Cliente] (cliente_contacto_num);
+CREATE INDEX IDX_CLIENTE_LOCALIDAD ON [BNFL].[Cliente] (cliente_localidad_id);
+
+/* SUCURSAL */
+CREATE INDEX IDX_SUCURSAL_ID ON [BNFL].[Sucursal] (sucursal_id);
+CREATE INDEX IDX_SUCURSAL_CONTACTO ON [BNFL].[Sucursal] (sucursal_contacto_num);
+CREATE INDEX IDX_SUCURSAL_LOCALIDAD ON [BNFL].[Sucursal] (sucursal_localidad_id);
+
+/* FACTURA */
+CREATE INDEX IDX_FACTURA_ID ON [BNFL].[Factura] (fact_id);
+CREATE INDEX IDX_FACTURA_NUMERO ON [BNFL].[Factura] (fact_numero);
+CREATE INDEX IDX_FACTURA_CLIENTE ON [BNFL].[Factura] (fact_cliente_num);
+CREATE INDEX IDX_FACTURA_SUCURSAL ON [BNFL].[Factura] (fact_sucursal_id);
+
+/* DETALLE_FACTURA */
+CREATE INDEX IDX_DETALLE_FACTURA_FACTURA_ID ON [BNFL].[Detalle_Factura] (detalle_f_factura_id);
+CREATE INDEX IDX_DETALLE_FACTURA_PEDIDO ON [BNFL].[Detalle_Factura] (detalle_f_pedido_numero, detalle_f_det_pedido);
+
+/* ENVIO */
+CREATE INDEX IDX_ENVIO_ID ON [BNFL].[Envio] (envio_id);
+CREATE INDEX IDX_ENVIO_FACTURA_ID ON [BNFL].[Envio] (envio_fact_id);
+
+/* PEDIDO */
+CREATE INDEX IDX_PEDIDO_ID ON [BNFL].[Pedido] (pedido_id);
+CREATE INDEX IDX_PEDIDO_NUMERO ON [BNFL].[Pedido] (pedido_numero);
+CREATE INDEX IDX_PEDIDO_CLIENTE ON [BNFL].[Pedido] (pedido_cliente_num);
+CREATE INDEX IDX_PEDIDO_SUCURSAL ON [BNFL].[Pedido] (pedido_sucursal_id);
+CREATE INDEX IDX_PEDIDO_ESTADO ON [BNFL].[Pedido] (pedido_estado_num);
+
+/* PEDIDO_CANCELACION */
+CREATE INDEX IDX_PEDIDO_CANCELACION_ID ON [BNFL].[Pedido_Cancelacion] (pedido_can_numero);
+CREATE INDEX IDX_PEDIDO_CANCELACION_PEDIDO_ID ON [BNFL].[Pedido_Cancelacion] (pedido_can_pedido_id);
+
+/* DETALLE_PEDIDO */
+CREATE INDEX IDX_DETALLE_PEDIDO_ID ON [BNFL].[Detalle_Pedido] (detalle_p_pedido_id);
+CREATE INDEX IDX_DETALLE_PEDIDO_SILLON ON [BNFL].[Detalle_Pedido] (detalle_p_sillon_numero);
+
+/* COMPRA */
+CREATE INDEX IDX_COMPRA_ID ON [BNFL].[Compra] (compra_id);
+CREATE INDEX IDX_COMPRA_NUMERO ON [BNFL].[Compra] (compra_numero);
+CREATE INDEX IDX_COMPRA_PROVEEDOR ON [BNFL].[Compra] (compra_proved_num);
+CREATE INDEX IDX_COMPRA_SUCURSAL ON [BNFL].[Compra] (compra_sucursal_id);
+
+/* DETALLE_COMPRA */
+CREATE INDEX IDX_DETALLE_COMPRA_COMPRA_ID ON [BNFL].[Detalle_Compra] (detalle_comp_compra_num);
+CREATE INDEX IDX_DETALLE_COMPRA_MATERIAL ON [BNFL].[Detalle_Compra] (detalle_comp_material);
+
+/* PROVEEDOR */
+CREATE INDEX IDX_PROVEEDOR_ID ON [BNFL].[Proveedor] (proved_num);
+CREATE INDEX IDX_PROVEEDOR_CONTACTO ON [BNFL].[Proveedor] (proved_contacto_num);
+CREATE INDEX IDX_PROVEEDOR_LOCALIDAD ON [BNFL].[Proveedor] (proved_localidad_id);
+
+/* CONTACTO */
+CREATE INDEX IDX_CONTACTO_NUM ON [BNFL].[Contacto] (contacto_num);
+
+/* SILLON_MODELO */
+CREATE INDEX IDX_SILLON_MODELO_ID ON [BNFL].[Sillon_Modelo] (sillon_mod_codigo);
+
+/* SILLON_MEDIDA */
+CREATE INDEX IDX_SILLON_MEDIDA_ID ON [BNFL].[Sillon_Medida] (sillon_med_id);
+
+/* SILLON */
+CREATE INDEX IDX_SILLON_CODIGO ON [BNFL].[Sillon] (sillon_codigo);
+CREATE INDEX IDX_SILLON_MODELO ON [BNFL].[Sillon] (sillon_sillon_m_num);
+CREATE INDEX IDX_SILLON_MEDIDA ON [BNFL].[Sillon] (sillon_sillon_medida_num);
+
+/* MATERIAL_SILLON */
+CREATE INDEX IDX_MATERIAL_SILLON_MATERIAL ON [BNFL].[Material_Sillon] (mat_sill_material);
+CREATE INDEX IDX_MATERIAL_SILLON_SILLON ON [BNFL].[Material_Sillon] (mat_sill_sillon);
+
+/* MATERIAL */
+CREATE INDEX IDX_MATERIAL_NUMERO ON [BNFL].[Material] (material_numero);
+
+/* TELA */
+CREATE INDEX IDX_TELA_NUMERO ON [BNFL].[Tela] (tela_numero);
+
+/* MADERA */
+CREATE INDEX IDX_MADERA_NUMERO ON [BNFL].[Madera] (madera_numero);
+
+/* RELLENO */
+CREATE INDEX IDX_RELLENO_NUM ON [BNFL].[Relleno] (relleno_num);
+
+PRINT ' EJECUCION FINALIZADA '
