@@ -772,8 +772,7 @@ AS
 BEGIN
     INSERT INTO [BNFL].Detalle_Pedido (detalle_p_numero, detalle_p_sillon_numero, detalle_p_pedido_id, 
     detalle_p_cantidad, detalle_p_precio)
-    SELECT DISTINCT 
-	ROW_NUMBER() OVER (PARTITION BY Pedido.pedido_numero ORDER BY Pedido.Pedido_Numero) AS detalle_ped_item_id,
+    SELECT DISTINCT ROW_NUMBER() OVER (PARTITION BY Pedido.pedido_numero ORDER BY Pedido.Pedido_Numero) AS detalle_ped_item_id,
     Sillon.sillon_codigo,
     Pedido.pedido_id,
     Maestra.Detalle_Pedido_Cantidad,
@@ -813,6 +812,7 @@ BEGIN
         AND Detalle_Pedido.detalle_p_pedido_id IS NOT NULL
 END
 GO
+
 
 execute [BNFL].Migracion_Estado; 
 execute [BNFL].Migracion_Sillon_Medida; 
