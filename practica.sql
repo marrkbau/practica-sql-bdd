@@ -498,6 +498,7 @@ cli.clie_razon_social,
 from Cliente cli
 left join Factura f2 on cli.clie_codigo = f2.fact_cliente
 left join Item_Factura i5 on i5.item_numero+i5.item_tipo+i5.item_sucursal = f2.fact_numero+f2.fact_tipo+f2.fact_sucursal
+where year(f2.fact_fecha) = 2012
 group by clie_codigo, clie_razon_social
 having isnull(sum(i5.item_cantidad*i5.item_precio), 0) < (select top 1 avg(item_cantidad*item_precio) 
                         from Factura f3
@@ -541,3 +542,40 @@ left join Factura f1 on fact_tipo+fact_sucursal+fact_numero = item_tipo+item_suc
 group by prod_codigo, prod_detalle, fact_fecha
 order by 4 desc
 
+/*
+18. Escriba una consulta que retorne una estadística de ventas para todos los rubros.
+La consulta debe retornar:
+DETALLE_RUBRO: Detalle del rubro
+VENTAS: Suma de las ventas en pesos de productos vendidos de dicho rubro
+PROD1: Código del producto más vendido de dicho rubro
+PROD2: Código del segundo producto más vendido de dicho rubro
+CLIENTE: Código del cliente que compro más productos del rubro en los últimos 30 
+días
+La consulta no puede mostrar NULL en ninguna de sus columnas y debe estar ordenada 
+por cantidad de productos diferentes vendidos del rubro
+*/
+
+select rubr_detalle, sum(item_cantidad*item_precio), 
+(select top 1 item_producto from Item_Factura i2 join Producto on prod_codigo = i2.item_producto
+where prod_rubro = rubr_id
+group by i2.item_producto
+order by sum(item_cantidad*item_numero) desc) producto_mas_vendido,
+                                    (select top 1 item_producto from Item_Factura i3 join Producto on prod_codigo = i3.item_producto
+                                    where prod_rubro = rubr_id and item_producto not in
+                                                    (select top 1 item_producto from Item_Factura i2 
+                                                    join Producto on prod_codigo = i2.item_producto
+                                                    where prod_rubro = rubr_id 
+                                                    group by i2.item_producto
+                                                    order by sum(item_cantidad*item_numero) desc) 
+                                    group by i3.item_producto
+order by sum(item_cantidad*item_numero) desc ) segundo_mas_vendido,
+(select top 1 clie_codigo from Cliente join Factura on fact_cliente = clie_codigo
+join Item_Factura i4 on i4.item_sucursal+i4.item_tipo+i4.item_numero = fact_sucursal+fact_tipo+fact_numero
+join Producto p2 on i4.item_producto = prod_codigo and prod_rubro = rubr_id
+where fact_fecha >= DATEADD(DAY, -30, GETDATE()) AND fact_fecha <= GETDATE()
+group by clie_codigo
+order by sum(item_cantidad*item_precio))
+from Rubro 
+join Producto on prod_rubro = rubr_id
+join Item_Factura on item_producto = prod_codigo
+group by rubr_id, rubr_detalle
