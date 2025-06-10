@@ -483,41 +483,29 @@ La composición es de 2 niveles, es decir, un producto compuesto solo se compone
 productos no compuestos.
 Los clientes deben ser ordenados por código de provincia ascendente.
 */
+
 select 
 cli.clie_razon_social, 
 (select sum(i2.item_cantidad) from Factura f1
     join Item_Factura i2 on f1.fact_tipo+f1.fact_sucursal+f1.fact_numero = i2.item_tipo+i2.item_sucursal+i2.item_numero
     where cli.clie_codigo = f1.fact_cliente and year(fact_fecha) = 2012
-    group by item_numero
-    ) unidades,
+    ) cantidad_unidades,
 (select top 1 i3.item_producto from Factura f4 join Item_Factura i3 
     on f4.fact_sucursal+f4.fact_numero+f4.fact_tipo = i3.item_sucursal+i3.item_numero+i3.item_tipo
     where year(f4.fact_fecha) = 2012 and f4.fact_cliente = clie_codigo
     group by item_producto
-    order by sum(item_cantidad*item_precio)) codigo_producto
+    order by sum(item_cantidad*item_precio) desc) codigo_producto 
 from Cliente cli
-join Factura f2 on cli.clie_codigo = f2.fact_cliente
-where year(f2.fact_fecha) = 2012
+left join Factura f2 on cli.clie_codigo = f2.fact_cliente
+left join Item_Factura i5 on i5.item_numero+i5.item_tipo+i5.item_sucursal = f2.fact_numero+f2.fact_tipo+f2.fact_sucursal
 group by clie_codigo, clie_razon_social
-having sum(f2.fact_total) < (select top 1 avg(item_cantidad) 
+having isnull(sum(i5.item_cantidad*i5.item_precio), 0) < (select top 1 avg(item_cantidad*item_precio) 
                         from Factura f3
                         join Item_Factura i1 on f3.fact_tipo + f3.fact_sucursal + f3.fact_numero = i1.item_tipo + i1.item_sucursal + i1.item_numero 
                         where year (fact_fecha) = 2012
-                        group by item_producto 
-                        order by sum(item_cantidad) desc) / 3
-
-select top 1 i3.item_producto from Factura f4 join Item_Factura i3 
-    on f4.fact_sucursal+f4.fact_numero+f4.fact_tipo = i3.item_sucursal+i3.item_numero+i3.item_tipo
-    join Cliente on fact_cliente = clie_codigo
-    where year(f4.fact_fecha) = 2012 and f4.fact_cliente = clie_codigo
-    group by item_producto
-    order by sum(item_cantidad*item_precio)
-
-select sum(i2.item_cantidad) from Factura f1
-    join Item_Factura i2 on f1.fact_tipo+f1.fact_sucursal+f1.fact_numero = i2.item_tipo+i2.item_sucursal+i2.item_numero
-    join Cliente cli on f1.fact_cliente = cli.clie_codigo
-    where cli.clie_codigo = f1.fact_cliente
-    group by item_numero
+                        group by i1.item_producto 
+                        order by sum(item_cantidad*item_precio) desc) / 3
+order by 2
 
 --having count(fact_numero) < 
 /*count(fact_numero) < (select top 1 avg(item_cantidad) 
