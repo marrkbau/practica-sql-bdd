@@ -516,18 +516,28 @@ order by 2
                         year (fact_fecha) = 2012
                         group by prod_detalle 
                         order by sum(item_cantidad) desc) / 3*/
-    /*
-    17. Escriba una consulta que retorne una estadística de ventas por año y mes para cada
-    producto.
-    La consulta debe retornar:
-    PERIODO: Año y mes de la estadística con el formato YYYYMM
-    PROD: Código de producto
-    DETALLE: Detalle del producto
-    CANTIDAD_VENDIDA= Cantidad vendida del producto en el periodo
-    VENTAS_AÑO_ANT= Cantidad vendida del producto en el mismo mes del periodo 
-    pero del año anterior
-    CANT_FACTURAS= Cantidad de facturas en las que se vendió el producto en el 
-    periodo
-    La consulta no puede mostrar NULL en ninguna de sus columnas y debe estar ordenada 
-    por periodo y código de producto
-     */
+/*
+17. Escriba una consulta que retorne una estadística de ventas por año y mes para cada
+producto.
+La consulta debe retornar:
+PERIODO: Año y mes de la estadística con el formato YYYYMM
+PROD: Código de producto
+DETALLE: Detalle del producto
+CANTIDAD_VENDIDA= Cantidad vendida del producto en el periodo
+VENTAS_AÑO_ANT= Cantidad vendida del producto en el mismo mes del periodo 
+pero del año anterior
+CANT_FACTURAS= Cantidad de facturas en las que se vendió el producto en el 
+periodo
+La consulta no puede mostrar NULL en ninguna de sus columnas y debe estar ordenada 
+por periodo y código de producto*/
+
+select FORMAT(fact_fecha, 'yyyy-MM'), prod_detalle, isnull(sum(i2.item_cantidad*i2.item_precio), 0) cantidad_vendida,
+    isnull((select sum(i1.item_cantidad*i1.item_precio) from Item_Factura i1
+    left join Factura f2 on f2.fact_tipo+f2.fact_sucursal+f2.fact_numero = i1.item_tipo+i1.item_sucursal+i1.item_numero
+    where item_producto = prod_codigo and year(f1.fact_fecha)-1  = year(f2.fact_fecha) 
+    and month(f2.fact_fecha) = month(f1.fact_fecha)), 0) cantidad_vendida_anio_pasado, count(distinct fact_numero+fact_sucursal+fact_numero) from Producto
+left join Item_Factura i2 on prod_codigo = item_producto
+left join Factura f1 on fact_tipo+fact_sucursal+fact_numero = item_tipo+item_sucursal+item_numero
+group by prod_codigo, prod_detalle, fact_fecha
+order by 4 desc
+
