@@ -766,23 +766,37 @@ BEGIN
 END 
 GO
 
+
 -- DETALLE PEDIDO
 CREATE PROCEDURE [BNFL].Migracion_Detalle_Pedido
 AS
 BEGIN
-    INSERT INTO [BNFL].Detalle_Pedido (detalle_p_numero, detalle_p_sillon_numero, detalle_p_pedido_id, 
-    detalle_p_cantidad, detalle_p_precio)
-    SELECT DISTINCT ROW_NUMBER() OVER (PARTITION BY Pedido.pedido_numero ORDER BY Pedido.Pedido_Numero) AS detalle_ped_item_id,
-    Sillon.sillon_codigo,
-    Pedido.pedido_id,
-    Maestra.Detalle_Pedido_Cantidad,
-    Maestra.Detalle_Pedido_Precio
+    INSERT INTO [BNFL].Detalle_Pedido (
+        detalle_p_numero, 
+        detalle_p_sillon_numero, 
+        detalle_p_pedido_id, 
+        detalle_p_cantidad, 
+        detalle_p_precio
+    )
+    SELECT 
+        ROW_NUMBER() OVER (
+            PARTITION BY Pedido.pedido_numero 
+            ORDER BY Pedido.Pedido_Numero, Sillon.sillon_codigo
+        ) AS detalle_ped_item_id,
+        Sillon.sillon_codigo,
+        Pedido.pedido_id,
+        MAX(Maestra.Detalle_Pedido_Cantidad) AS detalle_p_cantidad,
+        MAX(Maestra.Detalle_Pedido_Precio) AS detalle_p_precio
     FROM gd_esquema.Maestra AS Maestra
-	JOIN [BNFL].Pedido ON Maestra.Pedido_Numero = Pedido.pedido_numero
+    JOIN [BNFL].Pedido ON Maestra.Pedido_Numero = Pedido.pedido_numero
     JOIN [BNFL].Sillon ON Maestra.Sillon_Codigo = Sillon.sillon_codigo
-	WHERE Maestra.Detalle_Pedido_Cantidad IS NOT NULL
-	AND Maestra.Detalle_Pedido_Precio IS NOT NULL
-	AND Maestra.Pedido_Numero IS NOT NULL
+    WHERE Maestra.Detalle_Pedido_Cantidad IS NOT NULL
+      AND Maestra.Detalle_Pedido_Precio IS NOT NULL
+      AND Maestra.Pedido_Numero IS NOT NULL
+    GROUP BY 
+        Pedido.pedido_numero, 
+        Pedido.pedido_id, 
+        Sillon.sillon_codigo
 END
 GO
 
