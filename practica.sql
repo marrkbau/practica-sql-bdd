@@ -899,3 +899,42 @@ WHERE  I.item_producto = (SELECT TOP 1 item_producto
 GROUP BY YEAR(F.fact_fecha), I.item_producto
 ORDER BY SUM(I.item_cantidad) DESC
 */
+
+
+/*
+31. Escriba una consulta sql que retorne una estadística por Año y Vendedor que retorne las siguientes columnas: 
+ * Año.
+ * Codigo de Vendedor 
+ * Detalle del Vendedor 
+ * Cantidad de facturas que realizó en ese año 
+ * Cantidad de clientes a los cuales les vendió en ese año. 
+ * Cantidad de productos facturados con composición en ese año 
+ * Cantidad de productos facturados sin composicion en ese año. 
+ * Monto total vendido por ese vendedor en ese año 
+Los datos deberan ser ordenados por año y dentro del año por el vendedor que haya vendido mas productos diferentes de mayor a menor.
+*/
+
+select 
+    year(f1.fact_fecha) as Anio,
+    f1.fact_vendedor,
+    e1.empl_nombre,
+    count(distinct f1.fact_cliente) as cantidad_de_clientes,
+    (select count(*) from item_factura
+	join composicion on item_producto = comp_producto
+	join factura f2 on item_tipo+item_sucursal+item_numero = f2.fact_tipo + f2.fact_sucursal + f2.fact_numero
+	where year(fact_fecha) = year(f1.fact_fecha)
+	and f2.fact_vendedor = f1.fact_vendedor
+    ) as cant_productos_facturados_con_composicion,
+    (select count(*) from Item_Factura i1 
+    join Factura f2 on f2.fact_numero+f2.fact_sucursal+f2.fact_tipo = i1.item_numero+i1.item_sucursal+i1.item_tipo
+    where f1.fact_vendedor = f2.fact_vendedor and year(f2.fact_fecha) = year(f1.fact_fecha) 
+    and item_producto not in (select comp_producto from Composicion)
+    ) as cant_productos_sin_comp,
+    sum(item_cantidad*item_precio) as total_vendido
+from Factura f1 join Empleado e1 on e1.empl_codigo = f1.fact_vendedor
+join Item_Factura on item_numero+item_sucursal+item_tipo = fact_numero+fact_sucursal+fact_tipo
+group by year(f1.fact_fecha), f1.fact_vendedor, e1.empl_nombre
+order by 1, (select count(*) from Item_Factura i1 
+    join Producto on item_producto = prod_codigo
+    join Factura f2 on f2.fact_numero+f2.fact_sucursal+f2.fact_tipo = i1.item_numero+i1.item_sucursal+i1.item_tipo
+    where f1.fact_vendedor = f2.fact_vendedor and year(f2.fact_fecha) = year(f1.fact_fecha)) desc
