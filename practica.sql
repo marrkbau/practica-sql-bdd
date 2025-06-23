@@ -938,3 +938,45 @@ order by 1, (select count(*) from Item_Factura i1
     join Producto on item_producto = prod_codigo
     join Factura f2 on f2.fact_numero+f2.fact_sucursal+f2.fact_tipo = i1.item_numero+i1.item_sucursal+i1.item_tipo
     where f1.fact_vendedor = f2.fact_vendedor and year(f2.fact_fecha) = year(f1.fact_fecha)) desc
+
+
+/* Realizar una consulta SQL que permita saber si un cliente compró un producto en todos los meses del 2012.
+
+Además, mostrar para el 2012:
+El cliente
+La razón social del cliente
+El producto comprado
+El nombre del producto
+Cantidad de productos distintos comprados por el cliente
+Cantidad de productos con composición comprados por el cliente
+
+📌 Condición de ordenamiento:
+
+El resultado deberá ser ordenado poniendo primero aquellos clientes que compraron más de 10 productos distintos en el 2012.
+⚠️ Nota:
+No se permite SELECT en el FROM, es decir:
+SELECT ... FROM (SELECT ...) AS T ... no está permitido.el resultado Debera ser ordenado poniendo primero aquellos clientes que compraron mas de 10 productos distintos en el 2012
+*/
+
+select 
+    fact_cliente, 
+    clie_razon_social, 
+    item_producto, 
+    prod_detalle,
+    (select count(distinct item_producto) from Item_Factura i1 
+    join Factura f1 on i1.item_numero+i1.item_sucursal+i1.item_tipo = f1.fact_numero+f1.fact_sucursal+f1.fact_tipo
+    join Cliente c1 on f1.fact_cliente = c1.clie_codigo where fac.fact_cliente = c1.clie_codigo and year(f1.fact_fecha) = 2012),
+    (select count(distinct item_producto) from Item_Factura i1
+    join Composicion c1 on c1.comp_producto = i1.item_producto
+    join Factura f1 on i1.item_numero+i1.item_sucursal+i1.item_tipo = f1.fact_numero+f1.fact_sucursal+f1.fact_tipo
+    join Cliente c2 on f1.fact_cliente = c2.clie_codigo where fac.fact_cliente = c2.clie_codigo and year(f1.fact_fecha) = 2012)
+    from Cliente
+join Factura fac on clie_codigo = fact_cliente
+join Item_Factura on item_numero+item_sucursal+item_tipo = fact_numero+fact_sucursal+fact_tipo
+join Producto on item_producto = prod_codigo
+where year(fact_fecha) = 2012
+group by fact_cliente, clie_razon_social, item_producto, prod_detalle 
+having count(distinct month(fact_fecha)) = 6
+order by (select count(distinct item_producto) from Item_Factura i1 
+    join Factura f1 on i1.item_numero+i1.item_sucursal+i1.item_tipo = f1.fact_numero+f1.fact_sucursal+f1.fact_tipo
+    join Cliente c1 on f1.fact_cliente = c1.clie_codigo where fac.fact_cliente = c1.clie_codigo and year(f1.fact_fecha) = 2012) desc
