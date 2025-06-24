@@ -967,16 +967,97 @@ select
     join Factura f1 on i1.item_numero+i1.item_sucursal+i1.item_tipo = f1.fact_numero+f1.fact_sucursal+f1.fact_tipo
     join Cliente c1 on f1.fact_cliente = c1.clie_codigo where fac.fact_cliente = c1.clie_codigo and year(f1.fact_fecha) = 2012),
     (select count(distinct item_producto) from Item_Factura i1
-    join Composicion c1 on c1.comp_producto = i1.item_producto
     join Factura f1 on i1.item_numero+i1.item_sucursal+i1.item_tipo = f1.fact_numero+f1.fact_sucursal+f1.fact_tipo
-    join Cliente c2 on f1.fact_cliente = c2.clie_codigo where fac.fact_cliente = c2.clie_codigo and year(f1.fact_fecha) = 2012)
+    join Cliente c2 on f1.fact_cliente = c2.clie_codigo where fac.fact_cliente = c2.clie_codigo and year(f1.fact_fecha) = 2012
+    and item_producto in (select comp_producto from Composicion))
     from Cliente
 join Factura fac on clie_codigo = fact_cliente
 join Item_Factura on item_numero+item_sucursal+item_tipo = fact_numero+fact_sucursal+fact_tipo
 join Producto on item_producto = prod_codigo
 where year(fact_fecha) = 2012
 group by fact_cliente, clie_razon_social, item_producto, prod_detalle 
-having count(distinct month(fact_fecha)) = 6
+having count(distinct month(fact_fecha)) = 5
 order by (select count(distinct item_producto) from Item_Factura i1 
     join Factura f1 on i1.item_numero+i1.item_sucursal+i1.item_tipo = f1.fact_numero+f1.fact_sucursal+f1.fact_tipo
     join Cliente c1 on f1.fact_cliente = c1.clie_codigo where fac.fact_cliente = c1.clie_codigo and year(f1.fact_fecha) = 2012) desc
+
+
+
+/*
+Realizar una consulta sql que retorne para los 10 clientes que más
+compraron en 2012 y que fueron atendidos por más de 3 vendedores distintos
+* Apellido y nombre de cliente
+* Cantidad de productos distintos comprados en 2012
+* Cantidad de unidades compradas dentro del primer semestre del 2012 
+
+El resultado deberá mostrar ordenado la cantidad de ventas descendente del 2012
+de cada cliente, en caso de igualdad de ventas, ordenar por código de cliente
+*/
+
+select 
+    clie_razon_social,
+    count(distinct item_producto),
+    (select count(i1.item_producto) from Item_Factura i1
+    join Factura f1 on i1.item_numero+i1.item_sucursal+i1.item_tipo = f1.fact_numero+f1.fact_sucursal+f1.fact_tipo
+    where year(fact_fecha) = 2012 and f1.fact_cliente = f2.fact_cliente and month(fact_fecha) <= 6)
+from Cliente 
+join Factura f2 on clie_codigo = fact_cliente
+join Item_Factura on fact_numero+fact_sucursal+fact_tipo = item_numero+item_sucursal+item_tipo
+where year(fact_fecha) = 2012
+group by clie_razon_social, fact_cliente
+order by count(distinct fact_numero), fact_cliente
+
+
+
+
+
+
+select 
+    item_producto,
+    (case when count(item_producto) > 100 then 'Popular' else 'Sin interés' end),
+    count(distinct item_numero+item_sucursal+item_tipo),
+    (select top 1 f1.fact_cliente from Factura f1
+    join Item_Factura i1 on i1.item_tipo+i1.item_numero+i1.item_sucursal = f1.fact_tipo+f1.fact_numero+f1.fact_sucursal
+    where i1.item_producto = i0.item_producto
+    and year(f1.fact_fecha) = 2012
+    group by f1.fact_cliente
+    order by sum(i1.item_cantidad*i1.item_precio) desc)
+from Item_Factura i0
+join Factura f2 on item_numero+item_tipo+item_sucursal = fact_numero+fact_tipo+fact_sucursal
+where year(fact_fecha) = 2012
+group by item_producto
+having sum(i0.item_cantidad*i0.item_precio) > (select avg(i2.item_cantidad*i2.item_precio) from Item_Factura i2
+                            join Factura f3 on i2.item_tipo+i2.item_numero+i2.item_sucursal = f3.fact_tipo+f3.fact_numero+f3.fact_sucursal
+                            where year(fact_fecha) = 2011 or year(fact_fecha) = 2010) * 0.15 
+order by 2, 3 desc
+
+
+/*
+Mostrar 
+
+* Depósito
+* Domicilio del Depósito 
+* Cantidad de productos compuestos con stock
+* Cantidad de productos no compuestos con stock 
+* Indicar un string "Mayoria Compuestos", en caso de que el depósito tenga mayor cantidad 
+    de productos compuestos o "Mayoría no compuestos", caso contrario
+* Empleado más joven en todos los depósitos
+*/
+
+select 
+    depo_codigo, 
+    depo_domicilio,
+    (select count(distinct stoc_producto) from STOCK
+    where stoc_deposito = depo_codigo and stoc_producto in (select comp_producto from Composicion)),
+    (select count(distinct stoc_producto) from STOCK
+    where stoc_deposito = depo_codigo and stoc_producto not in (select comp_producto from Composicion)),
+    (case when (select count(distinct stoc_producto) from STOCK 
+            where stoc_deposito = depo_codigo and stoc_producto 
+            in (select comp_producto from Composicion)) > (select count(distinct stoc_producto) from STOCK
+            where stoc_deposito = depo_codigo and stoc_producto not in (select comp_producto from Composicion)) then 'Mayoria Compuestos' else 'Mayoría no compuestos' 
+            end),
+    (select top 1 d1.depo_encargado from DEPOSITO d1
+    join Empleado on depo_encargado = empl_codigo
+    order by empl_nacimiento)
+from DEPOSITO 
+group by depo_codigo, depo_domicilio
