@@ -13,7 +13,7 @@ deberá retornar la cantidad de empleados que había sin jefe antes de la ejecuc
 
 
 go
-alter procedure ej3 @empleados_sin_jefe numeric(30) output
+create procedure ej3 @empleados_sin_jefe numeric(30) output
 as
 begin
     declare @jefe numeric(30)
@@ -62,4 +62,86 @@ end
 DECLARE @vendedor INT;
 EXECUTE ej4 @vendedor OUTPUT;
 PRINT 'El código del vendedor que más vendió es: ' + CAST(@vendedor AS VARCHAR);
+go
 
+
+/*
+10. Crear el/los objetos de base de datos que ante el intento de borrar un artículo 
+verifique que no exista stock y si es así lo borre en caso contrario que emita un 
+mensaje de error
+*/
+
+
+create trigger ej10 on Producto after delete 
+AS 
+begin
+
+    if(select count(*) from deleted join STOCK on stoc_producto = prod_codigo where stoc_cantidad > 0) > 0
+    BEGIN
+        rollback 
+        RAISERROR('No se pueden borrar los producto con stock',)
+    END
+
+end
+
+
+
+GO
+
+-- Borrar los que se puedan e informar uno por uno los que no se puedan --
+alter trigger ej10 on Producto INSTEAD OF delete 
+AS 
+begin
+
+    declare @producto char(8)
+    delete from Producto where prod_codigo in (select prod_codigo from deleted where prod_codigo
+    not in (select distinct stoc_producto from STOCK where stoc_cantidad > 0))
+
+    declare c1 cursor for select distinct stoc_producto from deleted join STOCK on prod_codigo = stoc_producto where stoc_cantidad > 0
+    open c1 
+    fetch next c1 into @producto
+    while @@FETCH_STATUS = 0
+    begin 
+        print('El producto' + @producto + 'no se pudo borrar porque tiene stock')
+        fetch next c1 into @producto 
+    END
+    close c1
+    DEALLOCATE c1
+
+end
+
+
+
+/*
+11. Cree el/los objetos de base de datos necesarios para que dado un código de
+empleado se retorne la cantidad de empleados que este tiene a su cargo (directa o
+indirectamente). Solo contar aquellos empleados (directos o indirectos) que 
+tengan un código mayor que su jefe directo
+*/
+go
+create function ej11 (@empleado int)
+returns int 
+as 
+begin 
+
+    declare @conteo numeric(8)
+
+    set @conteo = (select isnull(count(*) + sum(dbo.ej11(empl_codigo)), 0) from Empleado e where e.empl_jefe = @empleado)
+    return @conteo 
+end
+go
+
+
+drop FUNCTION ej11
+
+BEGIN
+declare @count NUMERIC(8)
+
+set @count = ej11(3) 
+print(@count)
+END
+
+
+select * from Empleado
+
+update Empleado set empl_jefe = 3 where empl_codigo = 7

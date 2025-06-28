@@ -994,19 +994,49 @@ El resultado deberá mostrar ordenado la cantidad de ventas descendente del 2012
 de cada cliente, en caso de igualdad de ventas, ordenar por código de cliente
 */
 
-select 
+select top 10
     clie_razon_social,
     count(distinct item_producto),
     (select count(i1.item_producto) from Item_Factura i1
     join Factura f1 on i1.item_numero+i1.item_sucursal+i1.item_tipo = f1.fact_numero+f1.fact_sucursal+f1.fact_tipo
-    where year(fact_fecha) = 2012 and f1.fact_cliente = f2.fact_cliente and month(fact_fecha) <= 6)
-from Cliente 
+    where year(fact_fecha) = 2012 and f1.fact_cliente = c.clie_codigo and month(fact_fecha) <= 6)
+from Cliente c
 join Factura f2 on clie_codigo = fact_cliente
 join Item_Factura on fact_numero+fact_sucursal+fact_tipo = item_numero+item_sucursal+item_tipo
 where year(fact_fecha) = 2012
-group by clie_razon_social, fact_cliente
-order by count(distinct fact_numero), fact_cliente
+and (select count(distinct fact_vendedor) from Factura f4
+        where f4.fact_cliente = clie_codigo
+        and year(fact_fecha) = 2012) >= 3
+group by clie_razon_social, clie_codigo
+order by (select count(*) from Factura f5
+            where year(fact_fecha) = 2012 and f5.fact_cliente = clie_codigo), c.clie_codigo
 
+
+select top 10 c.clie_razon_social, 
+count(distinct item_producto) as cant_prod_distintos,
+(
+	select COUNT(*) from Item_Factura
+	join factura on fact_tipo+fact_sucursal+fact_numero = item_tipo+item_sucursal+item_numero
+	where fact_cliente = c.clie_codigo
+	and year(fact_fecha) = 2012
+	and month(fact_fecha) <= 6
+) as cant_unidades_compradas_1er_semestre
+from cliente c
+join factura f on c.clie_codigo = f.fact_cliente
+join item_factura on f.fact_tipo+f.fact_sucursal+f.fact_numero = item_tipo+item_sucursal+item_numero
+where year(f.fact_fecha) = 2012
+and (
+	select COUNT(distinct fact_vendedor) from Factura
+	where fact_cliente = c.clie_codigo
+	and year(fact_fecha) = 2012
+) > 3
+group by c.clie_codigo, c.clie_razon_social
+order by (
+	select count(*) from factura -- Cuento las facturas en las que aparece el cliente
+	where fact_cliente = c.clie_codigo
+	and year(fact_fecha) = 2012
+) desc, 
+c.clie_codigo asc
 
 
 
@@ -1061,3 +1091,123 @@ select
     order by empl_nacimiento)
 from DEPOSITO 
 group by depo_codigo, depo_domicilio
+
+
+
+/*
+Realizar una consulta SQL que retorne para el último año los 5 vendedores con
+menos clientes asignados, que más vendieron en pesos
+(si hay varios con menos clientes debe traer el que más vendió), solo deben considerarse las facturas que tengan 
+más de dos items facturados 
+1. Apellido y nombre de vendedor 
+2. Total de unidades de producto vendidas
+3. Monto promeido de venta por factura 
+4. Monto total de ventas
+
+El resultado deberá mostrar ordenado la cantidad de ventas descendente, en caso de igualdad de cantidades
+ordenar por código de vendedor
+*/
+
+select top 5
+    empl_nombre + '' + empl_apellido as [Apellido y nombre],
+    sum(item_cantidad) as [Total de unidades vendidas],
+    isnull(avg(item_cantidad*item_precio), 0) as [Promedio de venta por factura],
+    isnull(sum(item_cantidad*item_precio), 0) as [Monto total de]
+from Empleado
+join Factura on fact_vendedor = empl_codigo
+join Item_Factura on item_numero+item_sucursal+item_tipo = fact_numero+fact_sucursal+fact_tipo 
+where year(fact_fecha) = 2012
+    and fact_tipo+fact_sucursal+fact_numero in (select item_tipo+item_sucursal+item_numero
+    from item_factura
+    group by item_tipo, item_sucursal, item_numero
+    having count(*) > 2)
+    and empl_codigo in (select top 5 fact_vendedor
+                        from Cliente
+                        group by clie_vendedor
+                        having clie_vendedor is not null
+                        order by count(distinct clie_codigo))
+group by empl_nombre + '' +empl_apellido, empl_codigo
+order by (select count(distinct f4.fact_tipo+f4.fact_numero+f4.fact_sucursal) from Factura f4
+            where f4.fact_vendedor = empl_codigo and year(f4.fact_fecha) = 2012) desc,
+            empl_codigo 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+select
+    year(f1.fact_fecha) as [Año],
+    c1.clie_razon_social as [Razón Social],
+    fami1.fami_id as [Familia ID],
+    (select sum(i2.item_cantidad) from Item_Factura i2
+    join Producto p2 on p2.prod_codigo = i2.item_producto 
+    where fami1.fami_id = p2.prod_familia
+    group by p2.prod_familia) as [Cantidad de unidades compradas]
+from Factura f1
+join Cliente c1 on f1.fact_cliente = c1.clie_codigo
+join Item_Factura i1 on f1.fact_numero+f1.fact_sucursal+f1.fact_tipo = i1.item_numero+i1.item_sucursal+i1.item_tipo
+join Producto p1 on i1.item_producto = p1.prod_codigo
+left join Familia fami1 on fami1.fami_id = p1.prod_familia
+where c1.clie_codigo in (select top 1 f2.fact_cliente from Factura f2
+                            join Item_Factura i3  
+                            on f2.fact_numero+f2.fact_sucursal+f2.fact_tipo = i3.item_numero+i3.item_sucursal+i3.item_tipo
+                            join Producto p3 on i3.item_producto = p3.prod_codigo
+                            where year(f2.fact_fecha) = year(f1.fact_fecha) and p3.prod_familia = fami1.fami_id
+                            group by f2.fact_cliente, year(f2.fact_fecha) 
+                            order by count(distinct i3.item_producto) asc, sum(i3.item_cantidad*i3.item_precio) desc)
+group by year(f1.fact_fecha), c1.clie_razon_social, fami1.fami_id
+order by year(f1.fact_fecha) asc, (select count(prod_familia) from Familia f4 join Producto p5 on f4.fami_id = p5.prod_familia
+                                    where f4.fami_id = fami1.fami_id
+                                    group by prod_familia)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
