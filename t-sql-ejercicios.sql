@@ -13,7 +13,7 @@ deberá retornar la cantidad de empleados que había sin jefe antes de la ejecuc
 
 
 go
-create procedure ej3 @empleados_sin_jefe numeric(30) output
+alter procedure ej3 @empleados_sin_jefe numeric(30) output
 as
 begin
     declare @jefe numeric(30)
@@ -39,7 +39,7 @@ de empleado empl_comision con la sumatoria del total de lo vendido por ese emple
 Se deberá retornar el código del vendedor que más vendió (en monto) a lo largo del último año.
 */
 go
-create procedure ej4 @empl_mas_vendedor int output
+alter procedure ej4 @empl_mas_vendedor int output
 as
 begin 
 
@@ -79,7 +79,7 @@ begin
     if(select count(*) from deleted join STOCK on stoc_producto = prod_codigo where stoc_cantidad > 0) > 0
     BEGIN
         rollback 
-        RAISERROR('No se pueden borrar los producto con stock',)
+        --RAISERROR('No se pueden borrar los producto con stock',)
     END
 
 end
@@ -137,7 +137,7 @@ drop FUNCTION ej11
 BEGIN
 declare @count NUMERIC(8)
 
-set @count = ej11(3) 
+--set @count = dbo.ej11(3) 
 print(@count)
 END
 
@@ -145,3 +145,80 @@ END
 select * from Empleado
 
 update Empleado set empl_jefe = 3 where empl_codigo = 7
+
+
+/*
+13. Cree el/los objetos de base de datos necesarios para implantar la siguiente regla 
+“Ningún jefe puede tener un salario mayor al 20% de las suma de los salarios de sus empleados totales (directos + indirectos)”.
+Se sabe que en la actualidad dicha regla se cumple y que la base de datos es accedida por n aplicaciones de diferentes tipos y tecnologías 
+*/
+go
+create trigger ej13 on Empleado for delete, update 
+as 
+begin 
+    if (select count(*) from inserted where (select empl_salario from Empleado where empl_codigo = inserted.empl_jefe) 
+                                    < (dbo.ej13(inserted.empl_jefe) * 0.2)) > 0
+    BEGIN
+        ROLLBACK
+    END
+
+    if (select count(*) from deleted where (select empl_salario from Empleado where empl_codigo = deleted.empl_jefe) 
+                                    < (dbo.ej13(deleted.empl_jefe) * 0.2)) > 0
+    BEGIN
+        ROLLBACK
+    END
+
+end
+go
+
+create function ej13 (@codigoDeJefe int )
+returns numeric(8)
+as 
+begin 
+
+    declare @salarioDeTodos NUMERIC(8)
+    set @salarioDeTodos = (select sum(empl_salario) + sum(dbo.ej13(empl_codigo)) from Empleado where empl_jefe = @codigoDeJefe)
+    return @salarioDeTodos
+end
+
+go
+
+/*
+14. Agregar el/los objetos necesarios para que si un cliente compra un producto compuesto a un precio menor que la suma
+de los precios de sus componentes  que imprima la  fecha, que cliente, que productos y a qué precio se realizó la compra.
+No se deberá permitir que dicho precio sea menor a la mitad de la suma de los componentes.
+*/
+
+create trigger ej14 on item_factura instead of insert 
+as 
+begin 
+    declare @producto char(8), @precio numeric(12,2), @cantidad numeric(12,2), @tipo char, @numero char(8), @sucursal char
+    declare c1 cursor for (select item_producto, item_precio from inserted)
+    open c1
+    fetch c1 next into @producto, @precio, @cantidad, @tipo, @sucursal, @numero 
+    while @@FETCH_STATUS = 0
+    begin 
+        if @precio > (select isnull(sum(prod_precio), 0) from Producto join Composicion on prod_codigo = comp_componente where comp_producto = '00001104') * 0.5
+            begin 
+                insert Item_Factura values(@tipo, @sucursal, @numero, @producto, @cantidad, @precio)  
+            end 
+        else 
+        if @precio < (select isnull(sum(prod_precio), 0) from Producto join Composicion on prod_codigo = comp_componente where comp_producto = @producto) * 0.5
+            print('la suma del los componentes es menor que el precio del producto ' + @producto)
+        else 
+            begin 
+                insert Item_Factura values(@tipo, @sucursal, @numero, @producto, @cantidad, @precio)
+                declare @fecha date, @cliente char
+                select @fecha = fact_fecha, @cliente = fact_cliente from Factura join Item_Factura on fact_numero+fact_sucursal+fact_tipo=@numero+@sucursal+@tipo
+                print(@fecha + @cliente + @producto + @precio)
+            end 
+        fetch c1 next into @producto, @precio 
+
+    end
+    close c1 
+    deallocate c1 
+
+end 
+go 
+
+select prod_precio from Producto join Composicion on comp_producto = prod_codigo where prod_codigo = '00001104'
