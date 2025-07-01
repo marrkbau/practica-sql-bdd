@@ -222,3 +222,35 @@ end
 go 
 
 select prod_precio from Producto join Composicion on comp_producto = prod_codigo where prod_codigo = '00001104'
+
+
+go
+create trigger ejparcial2 on producto instead of insert 
+as 
+begin 
+    declare @rubro char, @producto char, @cantidad_de_prods int, @nuevo_rubro char, @prod_envase char, @prod_familia char,
+    @prod_detalle char, @prod_precio numeric(12,2)
+
+    declare c1 cursor for (select prod_codigo, prod_rubro, prod_detalle, prod_familia, prod_envase, prod_precio from inserted)
+    open c1
+    fetch c1 next into @producto, @rubro, @prod_detalle, @prod_familia, @prod_envase, @prod_precio 
+    while @@FETCH_STATUS = 0
+        begin 
+            set @cantidad_de_prods = (select count(*) from Producto join Rubro on prod_rubro = rubr_id and rubr_id = @rubro)
+            if @cantidad_de_prods > 20
+                begin
+                    set @nuevo_rubro = (select rubr_id from Producto join Rubro on prod_rubro = rubr_id
+                    group by rubr_id
+                    order by count(*))
+                    insert into Producto values (@producto, @nuevo_rubro, @prod_detalle, @prod_familia, @prod_envase, @prod_precio)
+                    print('Nuevo rubro asignado: ' + @nuevo_rubro + ' Producto: ' + @producto)
+                end
+            else 
+                begin 
+                    insert into Producto values (@producto, @rubro, @prod_detalle, @prod_familia, @prod_envase, @prod_precio)
+                end
+            fetch c1 next into @producto, @rubro, @prod_detalle, @prod_familia, @prod_envase, @prod_precio 
+        end 
+        close c1
+        deallocate c1
+end 
