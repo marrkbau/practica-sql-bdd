@@ -304,6 +304,58 @@ begin
 end 
 
 
+/*Realizar un store procedure que calcule e informe la comision de un vendedor para
+un determinado mes. Los parametros de entrada es codigo de vendedor, mes y anio.
+El criterio para calcular la comision es: 5% del total vendido tomando como importe
+base el valor de la factura sin los impuestos del mes a comisionar, a esto se le debe
+sumar un plus de 3% mas en el caso de que sea el vendedor que mas vendio los productos
+nuevos en comparacion al resto de los vendedores, es decir este plus se le aplica
+solo a un vendedor y en caso de igualdad se le otorga al que posea el codigo de vendedor
+mas alto. Se considera que un producto es nuevo cuando su primera venta en la empresa 
+se produjo durante el mes en curso o en alguno de los 4 meses anteriores. De no haber
+ventas de productos nuevos en este periodo, ese plus nunca se aplica-*/
+go
+
+
+create procedure parcial3 @codigo_vendedor int, @mes int, @anio int
+as 
+begin 
+    declare @comision numeric(12,2)
+    declare @vendido numeric(12,2)
+
+    set @vendido = (select sum(fact_total) from Factura 
+                    where fact_vendedor = @codigo_vendedor 
+                    and month(fact_fecha) = @mes 
+                    and year(fact_fecha) = @anio)
+    set @comision = @vendido * 0.05
+
+    if (select top 1 fact_vendedor from Factura join Item_Factura 
+        on item_numero+item_sucursal+item_tipo = fact_numero+fact_sucursal+fact_tipo
+        group by fact_vendedor, fact_fecha
+        having year(fact_fecha) = year(GETDATE()) and datediff(month, min(fact_fecha) ,GETDATE()) between 1 and 4
+        order by count(item_producto) desc, fact_vendedor) = @codigo_vendedor
+        begin 
+            set @comision = @comision + @vendido * 0.03
+        end
+        print('La comisión del vendedor: ' + @codigo_vendedor + 'es: ' + @comision)
+
+    return 
+end  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
