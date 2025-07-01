@@ -254,3 +254,86 @@ begin
         close c1
         deallocate c1
 end 
+
+go
+create trigger ejparcial1 on item_factura after insert
+as 
+begin 
+
+
+    declare @producto char(8), @item_precio numeric(12,2), @fecha date, @precio_mes_pasado numeric(12,2), @precio_anio_pasado numeric(12,2)
+    declare @tipo char, @sucursal char, @num numeric(12,2)
+    declare c1 cursor for (select item_producto, item_precio, fact_fecha, fact_tipo, fact_sucursal, fact_numero from inserted join Factura on item_numero+item_sucursal+item_tipo=fact_numero+fact_sucursal+fact_tipo)
+    open c1 
+    fetch c1 next into @producto, @item_precio, @fecha, @tipo, @sucursal, @num
+    while @@FETCH_STATUS = 0
+        begin 
+            select @precio_mes_pasado = isnull(avg(item_precio), 0) from Factura join Item_Factura 
+                on item_numero+item_sucursal+item_tipo=fact_numero+fact_sucursal+fact_tipo where DATEDIFF(month, fact_fecha, GETDATE()) = 1 and item_producto = @producto
+
+              select @precio_anio_pasado = isnull(avg(item_precio), 0) from Factura join Item_Factura 
+                on item_numero+item_sucursal+item_tipo=fact_numero+fact_sucursal+fact_tipo where DATEDIFF(month, fact_fecha, GETDATE()) = 12 
+                and item_producto = @producto 
+
+            if @precio_mes_pasado = 0 and @precio_anio_pasado = 0
+                begin
+                fetch c1 next into @producto, @item_precio, @fecha, @tipo, @sucursal, @num
+                continue -- Es 0, no hay valores anteriores anteriores
+                end
+
+            if @item_precio < @precio_mes_pasado or @item_precio > @precio_mes_pasado * 1.05
+                begin 
+                    ROLLBACK
+                    delete from Item_Factura where item_numero+item_sucursal+item_tipo = @num+@sucursal+@tipo 
+                    delete from Factura where fact_numero+fact_sucursal+fact_tipo=@num+@sucursal+@tipo 
+                    print('No se puede vender un producto con un precio que no esté entre el 0% y el 5% del precio del mes pasado')
+                    break
+                end
+ 
+            if @item_precio > @precio_anio_pasado * 1.50
+                begin
+                    delete from Item_Factura where item_numero+item_sucursal+item_tipo = @num+@sucursal+@tipo 
+                    delete from Factura where fact_numero+fact_sucursal+fact_tipo=@num+@sucursal+@tipo 
+                    print('No se puede vender un producto con un precio mayor al 50% del precio del año pasado')
+                    break
+                end 
+            fetch c1 next into @producto, @item_precio, @fecha, @tipo, @sucursal, @num
+        end
+        close c1
+        deallocate c1
+end 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+>>>>>>> c94217ef3a97b128bdf57560701f3121ddf23938
